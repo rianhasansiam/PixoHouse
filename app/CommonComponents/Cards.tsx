@@ -33,7 +33,7 @@ export default function ProductCard({
     : 0;
 
   return (
-    <div className="group relative bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all duration-300 overflow-hidden">
+    <div className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-lg">
       {/* Image Section */}
       <div className="relative aspect-4/3 overflow-hidden bg-gray-50">
         <Link href={`/product/${id}`}>
@@ -41,7 +41,7 @@ export default function ProductCard({
             src={image}
             alt={name}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
           />
         </Link>
@@ -62,14 +62,16 @@ export default function ProductCard({
 
         {/* Wishlist Button */}
         <button
+          type="button"
           onClick={() => setIsWishlisted(!isWishlisted)}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:bg-white hover:scale-110 transition-all duration-200"
+          aria-pressed={isWishlisted}
+          className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 shadow-sm backdrop-blur-sm transition-all duration-200 hover:scale-110 hover:bg-white active:scale-95"
         >
           <Heart
-            className={`w-3.5 h-3.5 transition-colors ${
+            className={`h-3.5 w-3.5 transition-all duration-300 ${
               isWishlisted
-                ? "fill-red-500 text-red-500"
+                ? "scale-110 fill-red-500 text-red-500"
                 : "text-gray-500 hover:text-red-400"
             }`}
           />
@@ -77,10 +79,11 @@ export default function ProductCard({
 
         {/* Add to Cart - appears on hover */}
         <button
+          type="button"
           aria-label="Add to cart"
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-sm text-violet-700 font-semibold text-xs rounded-full shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 hover:bg-violet-600 hover:text-white"
+          className="absolute bottom-2 left-1/2 flex -translate-x-1/2 translate-y-2 items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-violet-700 opacity-0 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-violet-600 hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
         >
-          <ShoppingCart className="w-3.5 h-3.5" />
+          <ShoppingCart className="h-3.5 w-3.5" />
           Add
         </button>
       </div>

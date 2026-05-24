@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 const dealCards = [
   {
-    id: 1,
+    id: "crb1",
     image:
       "https://images.unsplash.com/photo-1543168256-418811576931?w=800&h=500&fit=crop",
     title: "25% OFF",
@@ -19,7 +19,7 @@ const dealCards = [
     link: "/products?category=grocery",
   },
   {
-    id: 2,
+    id: "crb2",
     image:
       "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&h=500&fit=crop",
     title: "SPECIAL",
@@ -32,7 +32,7 @@ const dealCards = [
     link: "/products?category=fashion",
   },
   {
-    id: 3,
+    id: "crb3",
     image:
       "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800&h=500&fit=crop",
     title: "50%",
@@ -45,7 +45,7 @@ const dealCards = [
     link: "/products?category=electronics",
   },
   {
-    id: 4,
+    id: "crb4",
     image:
       "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=500&fit=crop",
     title: "DELICIOUS",
@@ -58,7 +58,7 @@ const dealCards = [
     link: "/products?category=food",
   },
   {
-    id: 5,
+    id: "crb5",
     image:
       "https://images.unsplash.com/photo-1560393464-5c69a73c5770?w=800&h=500&fit=crop",
     title: "FRESH PICKS",

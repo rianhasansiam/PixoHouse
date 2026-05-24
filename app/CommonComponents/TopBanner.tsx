@@ -100,8 +100,8 @@ const TopBanner = () => {
               transition-all duration-300 ease-in-out text-center 
               ${
                 isAnimating
-                  ? "opacity-0 tranviolet-y-1"
-                  : "opacity-100 tranviolet-y-0"
+                  ? "opacity-0 translate-y-1"
+                  : "opacity-100 translate-y-0"
               }`}
             >
               {/* Badge */}

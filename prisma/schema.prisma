@@ -49,6 +49,9 @@ model Product {
   stock         Int           @default(0)
   image         String?
   images        String[] // multiple product images
+  rating        Float         @default(0)
+  reviewCount   Int           @default(0)
+  badge         String? // e.g. "Bestseller", "New", "Hot Deal", "Trending"
   status        ProductStatus @default(ACTIVE)
 
   categoryId String
