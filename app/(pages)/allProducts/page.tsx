@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import FilterSidebar from "./components/FilterSidebar";
 import MobileFilterDrawer from "./components/MobileFilterDrawer";
-import PageHeader from "./components/PageHeader";
-import Pagination from "./components/Pagination";
 import ProductsGrid from "./components/ProductsGrid";
 import ProductToolbar from "./components/ProductToolbar";
 import { allProductsData, PRICE_BOUNDS } from "./components/data";
@@ -24,9 +23,15 @@ export default function AllProductsPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortOption>("popular");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [page, setPage] = useState(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Infinite-scroll state
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Index from which the latest batch starts; used to fade in only new items.
+  const [animateFrom, setAnimateFrom] = useState(0);
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const filtered = useMemo(() => {
     let list = allProductsData.filter((p) => {
@@ -72,35 +77,59 @@ export default function AllProductsPage() {
     return list;
   }, [filters, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  // Reset the visible window when filters/sort change.
+  // Uses the "adjust state during render" pattern so we don't trigger a
+  // cascading effect.
+  const resetKey = `${filtered.length}|${sort}|${JSON.stringify(filters)}`;
+  const [prevKey, setPrevKey] = useState(resetKey);
+  if (prevKey !== resetKey) {
+    setPrevKey(resetKey);
+    setVisibleCount(PAGE_SIZE);
+    setAnimateFrom(0);
+  }
+
+  const pageItems = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
+  // IntersectionObserver: load more when sentinel scrolls into view
+  useEffect(() => {
+    if (!hasMore) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((current) => {
+            if (current >= filtered.length) return current;
+            setAnimateFrom(current);
+            return Math.min(current + PAGE_SIZE, filtered.length);
+          });
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, filtered.length]);
 
   const handleFiltersChange = (next: Filters) => {
     setFilters(next);
-    setPage(1);
   };
 
   const resetFilters = () => {
     setFilters(DEFAULT_FILTERS);
-    setPage(1);
   };
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#F5F3FF] via-white to-white">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-       
-
         <div className="flex gap-5">
           {/* Desktop Sidebar (collapsible) */}
           <div
             className={`hidden lg:block shrink-0 overflow-hidden transition-[width,opacity,margin] duration-300 ease-in-out ${
-              sidebarOpen
-                ? "w-64 opacity-100"
-                : "w-0 opacity-0 -ml-5"
+              sidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0 -ml-5"
             }`}
             aria-hidden={!sidebarOpen}
           >
@@ -132,16 +161,27 @@ export default function AllProductsPage() {
               viewMode={viewMode}
               onClearFilters={resetFilters}
               wide={!sidebarOpen}
+              animateFrom={animateFrom}
             />
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={(p) => {
-                setPage(p);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
+            {/* Sentinel + status row */}
+            <div className="mt-8 flex flex-col items-center justify-center gap-2 min-h-12">
+              {hasMore ? (
+                <>
+                  <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
+                  <div className="flex items-center gap-2 text-sm text-violet-700">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading more products…</span>
+                  </div>
+                </>
+              ) : (
+                filtered.length > PAGE_SIZE && (
+                  <p className="text-sm text-gray-500">
+                    You&apos;ve reached the end · {filtered.length} products
+                  </p>
+                )
+              )}
+            </div>
           </main>
         </div>
       </div>

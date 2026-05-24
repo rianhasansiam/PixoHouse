@@ -11,6 +11,11 @@ type Props = {
   viewMode: ViewMode;
   onClearFilters: () => void;
   wide?: boolean;
+  /**
+   * Index from which newly-appended items should fade in. Items before this
+   * index render without animation so they don't re-animate on each load.
+   */
+  animateFrom?: number;
 };
 
 export default function ProductsGrid({
@@ -18,6 +23,7 @@ export default function ProductsGrid({
   viewMode,
   onClearFilters,
   wide,
+  animateFrom = 0,
 }: Props) {
   if (products.length === 0) {
     return (
@@ -44,8 +50,20 @@ export default function ProductsGrid({
   if (viewMode === "list") {
     return (
       <div className="space-y-3">
-        {products.map((p) => (
-          <ListItem key={p.id} product={p} />
+        {products.map((p, idx) => (
+          <div
+            key={p.id}
+            className={
+              idx >= animateFrom ? "animate-in fade-in slide-in-from-bottom-2 duration-500" : undefined
+            }
+            style={
+              idx >= animateFrom
+                ? { animationDelay: `${Math.min((idx - animateFrom) * 40, 400)}ms`, animationFillMode: "backwards" }
+                : undefined
+            }
+          >
+            <ListItem product={p} />
+          </div>
         ))}
       </div>
     );
@@ -59,18 +77,29 @@ export default function ProductsGrid({
           : "xl:grid-cols-4 lg:grid-cols-3"
       }`}
     >
-      {products.map((p) => (
-        <ProductCard
+      {products.map((p, idx) => (
+        <div
           key={p.id}
-          id={p.id}
-          name={p.name}
-          price={p.discountPrice ?? p.price}
-          originalPrice={p.discountPrice ? p.price : undefined}
-          image={p.image}
-          rating={p.rating}
-          reviewCount={p.reviewCount}
-          badge={p.badge}
-        />
+          className={
+            idx >= animateFrom ? "animate-in fade-in slide-in-from-bottom-3 duration-500" : undefined
+          }
+          style={
+            idx >= animateFrom
+              ? { animationDelay: `${Math.min((idx - animateFrom) * 40, 400)}ms`, animationFillMode: "backwards" }
+              : undefined
+          }
+        >
+          <ProductCard
+            id={p.id}
+            name={p.name}
+            price={p.discountPrice ?? p.price}
+            originalPrice={p.discountPrice ? p.price : undefined}
+            image={p.image}
+            rating={p.rating}
+            reviewCount={p.reviewCount}
+            badge={p.badge}
+          />
+        </div>
       ))}
     </div>
   );
