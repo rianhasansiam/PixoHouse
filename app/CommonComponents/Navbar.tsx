@@ -226,6 +226,7 @@ export default function Navbar() {
           <div className="relative hidden lg:block">
             {user ? (
               <DropdownMenu
+                modal={false}
                 open={profileMenuOpen}
                 onOpenChange={setProfileMenuOpen}
               >
@@ -236,8 +237,18 @@ export default function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      onFocus={openProfileMenu}
-                      className="group hidden items-center gap-2 rounded-full p-1.5 transition-colors duration-200 hover:bg-white/40 sm:flex"
+                      onPointerDown={(event) => {
+                        // When the menu is already open (e.g. via hover), the
+                        // trigger's pointerdown would toggle it closed and
+                        // leave it stuck — the cursor is still on the button
+                        // so no fresh mouseenter fires to reopen it. Block
+                        // Radix's toggle in that case; the menu still closes
+                        // via mouseleave, outside-click, or Escape.
+                        if (profileMenuOpen) {
+                          event.preventDefault();
+                        }
+                      }}
+                      className="group flex items-center gap-2 rounded-full p-1.5 transition-colors duration-200 hover:bg-white/40"
                       aria-label="Open profile menu"
                     >
                       <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-violet-400 bg-violet-100 transition-transform duration-300 group-hover:scale-105">
@@ -299,7 +310,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/profile">
+                      <Link href="/orders">
                         <Package className="h-4 w-4" />
                         My Orders
                       </Link>
