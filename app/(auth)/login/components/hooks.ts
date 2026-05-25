@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FIELD_LIMITS } from "@/lib/auth/policy";
 
 import { isValidEmail } from "./helpers";
-import type { LoginForm } from "./types";
+import type { LoginForm } from "../page";
 
 export function useAutoRotatingIndex(total: number, intervalMs: number) {
   const [index, setIndex] = useState(0);

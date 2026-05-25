@@ -1,8 +1,4 @@
-import type { PasswordScore } from "./types";
-
-export function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+import type { PasswordScore } from "../page";
 
 export function getPasswordScore(password: string): PasswordScore {
   if (!password) return 0;

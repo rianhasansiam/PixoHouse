@@ -1,5 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { Loader2 } from "lucide-react";
+
 import GoogleIcon from "./icons/GoogleIcon";
 
 export function SocialDivider() {
@@ -17,17 +22,36 @@ export function SocialDivider() {
 }
 
 export function SocialButtons() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const handleGoogle = () => {
+    if (isRedirecting) return;
+    setIsRedirecting(true);
+    // Full-page redirect to Google's consent screen. NextAuth will return to
+    // `callbackUrl` after the round-trip succeeds.
+    void signIn("google", { callbackUrl });
+  };
+
   return (
     <div className="grid grid-cols-1 gap-2.5">
       <button
         type="button"
-        className="group flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 hover:shadow-md"
+        onClick={handleGoogle}
+        disabled={isRedirecting}
+        aria-busy={isRedirecting}
+        className="group flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2.5 text-xs font-bold text-gray-700 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
       >
         <span className="transition-transform duration-300 group-hover:scale-110">
-          <GoogleIcon />
+          {isRedirecting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <GoogleIcon />
+          )}
         </span>
 
-        <span>Continue with Google</span>
+        <span>{isRedirecting ? "Redirecting..." : "Continue with Google"}</span>
       </button>
     </div>
   );

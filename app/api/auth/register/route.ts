@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 
 import { isAllowedOrigin } from "@/lib/auth/origin";
 import { hashPassword } from "@/lib/auth/passwords";
@@ -17,6 +18,8 @@ const REGISTER_MAX_ATTEMPTS = 8;
 const REGISTER_WINDOW_MS = 10 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
+
+
   // Defense in depth: reject obvious cross-site POSTs early.
   if (!isAllowedOrigin(request)) {
     return jsonError(403, "Request blocked.");
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(400, "Please review the highlighted fields and try again.", {
-      fieldErrors: parsed.error.flatten().fieldErrors,
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
     });
   }
 

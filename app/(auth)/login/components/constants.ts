@@ -1,6 +1,6 @@
 import { Clock, ShoppingBag, Tag } from "lucide-react";
 
-import type { LoginForm } from "./types";
+import type { LoginForm } from "../page";
 
 export const INITIAL_FORM: LoginForm = {
   email: "",

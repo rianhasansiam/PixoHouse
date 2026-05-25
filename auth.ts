@@ -1,5 +1,6 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 
 import { authConfig } from "@/auth.config";
 import { FIELD_LIMITS } from "@/lib/auth/policy";
@@ -32,6 +33,12 @@ const LOGIN_WINDOW_MS = 5 * 60 * 1000;
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      // Always show the account picker so users can switch accounts mid-session.
+      authorization: { params: { prompt: "select_account" } },
+    }),
     Credentials({
       name: "Credentials",
       credentials: {
@@ -96,4 +103,68 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    /**
+     * Persist Google sign-ins to our User table on first login, then refresh
+     * `user.id`/`user.role` from the DB so downstream callbacks (jwt/session)
+     * see the values our app actually uses.
+     *
+     * Returning `false` aborts the sign-in (NextAuth then renders its
+     * AccessDenied page). We log every rejection so the cause is visible
+     * in the dev server console.
+     */
+    signIn: async ({ user, account, profile }) => {
+      if (account?.provider !== "google") return true;
+
+      // Prefer the email Google sent us in the profile, fall back to the
+      // one Auth.js already extracted onto `user`.
+      const email =
+        (profile as { email?: string } | undefined)?.email ?? user.email ?? null;
+      const emailVerified = (profile as { email_verified?: boolean } | undefined)
+        ?.email_verified;
+
+      if (!email) {
+        console.error("[auth/google] sign-in rejected: no email on profile");
+        return false;
+      }
+      // Only reject when Google explicitly says the email isn't verified.
+      // `undefined` (older flows) is treated as OK.
+      if (emailVerified === false) {
+        console.error("[auth/google] sign-in rejected: email not verified", {
+          email,
+        });
+        return false;
+      }
+
+      try {
+        // Upsert keeps the email column as the join key. We never overwrite a
+        // password set during Credentials signup — that field stays untouched.
+        const dbUser = await prisma.user.upsert({
+          where: { email },
+          create: {
+            email,
+            name: user.name ?? email.split("@")[0],
+            image: user.image ?? null,
+          },
+          update: {
+            // Refresh display fields, but only when Google actually has them.
+            ...(user.name ? { name: user.name } : {}),
+            ...(user.image ? { image: user.image } : {}),
+          },
+          select: { id: true, role: true },
+        });
+
+        // Mutate the `user` object so the jwt() callback (which runs next,
+        // with `user` populated only on this initial sign-in) picks up our IDs.
+        user.id = dbUser.id;
+        user.role = dbUser.role;
+
+        return true;
+      } catch (error) {
+        console.error("[auth/google] upsert failed", error);
+        return false;
+      }
+    },
+  },
 });

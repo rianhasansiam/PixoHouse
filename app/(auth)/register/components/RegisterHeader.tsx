@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { REGISTER_STEPS } from "./constants";
 import Stepper from "./Stepper";
-import type { RegisterStep } from "./types";
+import type { RegisterStep } from "../page";
 
 type RegisterHeaderProps = {
   currentStep: RegisterStep;

@@ -11,8 +11,9 @@ model User {
   name     String
   email    String  @unique
   password String? // nullable to support OAuth (e.g. Google) sign-in
-  phone    String
-  city     String
+  phone    String? // nullable: OAuth sign-ins don't collect this up-front
+  city     String? // nullable: OAuth sign-ins don't collect this up-front
+  image    String? // profile picture URL (e.g. Google avatar)
   role     Role    @default(USER)
 
   // Captured when the user accepts the Terms & Privacy at registration.

@@ -9,7 +9,7 @@ import { FIELD_LIMITS } from "@/lib/auth/policy";
 import FloatField from "./FloatField";
 import PasswordVisibilityButton from "./PasswordVisibilityButton";
 import { SocialButtons, SocialDivider } from "./SocialButtons";
-import type { LoginFieldUpdater, LoginForm, LoginStatus } from "./types";
+import type { LoginFieldUpdater, LoginForm, LoginStatus } from "../page";
 
 type LoginFormProps = {
   form: LoginForm;

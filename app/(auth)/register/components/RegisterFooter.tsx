@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 import { REGISTER_STEPS } from "./constants";
-import type { RegisterStatus, RegisterStep } from "./types";
+import type { RegisterStatus, RegisterStep } from "../page";
 
 type RegisterFooterProps = {
   currentStep: RegisterStep;

@@ -11,7 +11,7 @@ import {
 
 import { PASSWORD_COLOR_CLASSES, PASSWORD_LABELS } from "./constants";
 import { getPasswordScore } from "./helpers";
-import type { RegisterForm, RegisterStep } from "./types";
+import type { RegisterForm, RegisterStep } from "../page";
 
 export function useAutoRotatingIndex(total: number, intervalMs: number) {
   const [index, setIndex] = useState(0);
@@ -80,12 +80,8 @@ export function useRegisterValidation(
   return {
     emailValid,
     passwordScore,
-    passwordValid,
     passwordLabel: PASSWORD_LABELS[passwordScore],
     passwordColorClass: PASSWORD_COLOR_CLASSES[passwordScore],
-    accountStepValid,
-    securityStepValid,
-    profileStepValid,
     canContinue,
   };
 }

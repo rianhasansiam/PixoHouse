@@ -6,7 +6,7 @@ import { FIELD_LIMITS } from "@/lib/auth/policy";
 
 import FloatField from "./FloatField";
 import TermsCheckbox from "./TermsCheckbox";
-import type { FieldUpdater, RegisterForm } from "./types";
+import type { FieldUpdater, RegisterForm } from "../page";
 
 type ProfileStepProps = {
   form: RegisterForm;

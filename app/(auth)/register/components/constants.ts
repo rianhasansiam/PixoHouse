@@ -1,6 +1,6 @@
 import { ShoppingBag, Sparkles, Star } from "lucide-react";
 
-import type { RegisterForm } from "./types";
+import type { RegisterForm } from "../page";
 
 export const INITIAL_FORM: RegisterForm = {
   name: "",

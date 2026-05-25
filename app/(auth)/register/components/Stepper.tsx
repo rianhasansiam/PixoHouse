@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { REGISTER_STEPS } from "./constants";
-import type { RegisterStep } from "./types";
+import type { RegisterStep } from "../page";
 
 export default function Stepper({ currentStep }: { currentStep: RegisterStep }) {
   return (

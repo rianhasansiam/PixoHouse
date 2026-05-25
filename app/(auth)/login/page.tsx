@@ -12,7 +12,18 @@ import LoginHeader from "./components/LoginHeader";
 import SuccessState from "./components/SuccessState";
 import { BRAND_PERKS, INITIAL_FORM } from "./components/constants";
 import { useAutoRotatingIndex, useLoginValidation } from "./components/hooks";
-import type { LoginForm, LoginStatus } from "./components/types";
+
+export type LoginStatus = "idle" | "submitting" | "error" | "success";
+
+export type LoginForm = {
+  email: string;
+  password: string;
+};
+
+export type LoginFieldUpdater = <Field extends keyof LoginForm>(
+  field: Field,
+  value: LoginForm[Field],
+) => void;
 
 const DEFAULT_REDIRECT = "/";
 const GENERIC_LOGIN_ERROR = "Invalid email or password. Please try again.";

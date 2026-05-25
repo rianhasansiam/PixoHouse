@@ -12,7 +12,7 @@ import type {
   PasswordField,
   PasswordScore,
   RegisterForm,
-} from "./types";
+} from "../page";
 
 type SecurityStepProps = {
   form: RegisterForm;
