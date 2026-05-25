@@ -34,15 +34,25 @@ enum Role {
 }
 
 model Category {
-  id    String  @id @default(cuid())
-  name  String
-  image String?
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  description String?
+  image       String?
+  status      CategoryStatus @default(ACTIVE)
 
   products        Product[]
   categoryBanners CategoryBanner[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model Product {
