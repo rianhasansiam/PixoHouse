@@ -1,5 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 
+import adminOrdersReducer from "@/store/slices/admin-orders.slice";
 import adminProductsReducer from "@/store/slices/admin-products.slice";
 import allProductsReducer from "@/store/slices/all-products.slice";
 import cartReducer from "@/store/slices/cart.slice";
@@ -13,6 +14,7 @@ export const store = configureStore({
     wishlist: wishlistReducer,
     cart: cartReducer,
     adminProducts: adminProductsReducer,
+    adminOrders: adminOrdersReducer,
   },
 });
 

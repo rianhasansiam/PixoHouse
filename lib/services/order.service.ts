@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import type { OrderStatus } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/services/service-error";
@@ -412,6 +413,22 @@ export async function listOrdersForAdmin(query: AdminOrderQueryInput) {
       totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
     },
   };
+}
+
+/**
+ * Cache layer over `listOrdersForAdmin`. Tagged `admin-orders` so any
+ * status / payment / cancellation mutation can bust it on demand via
+ * `revalidateTag("admin-orders", "max")`. Uses stale-while-revalidate
+ * semantics so the admin panel stays responsive even if the DB is slow.
+ */
+const getCachedOrdersForAdmin = unstable_cache(
+  async (query: AdminOrderQueryInput) => listOrdersForAdmin(query),
+  ["admin-orders-list"],
+  { revalidate: 300, tags: ["admin-orders"] },
+);
+
+export function listOrdersForAdminCached(query: AdminOrderQueryInput) {
+  return getCachedOrdersForAdmin(query);
 }
 
 export function getOrderForAdmin(orderId: string) {

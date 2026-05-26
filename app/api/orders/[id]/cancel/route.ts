@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 
 import { requireUser } from "@/lib/api/guards";
 import { ok } from "@/lib/api/response";
@@ -24,6 +25,7 @@ export async function PATCH(_request: NextRequest, context: RouteContext) {
 
   try {
     const order = await cancelOrderAsCustomer(id, guard.session.user.id);
+    revalidateTag("admin-orders", "max");
     return ok(order);
   } catch (error) {
     return handleServiceError("orders/[id].cancel.PATCH", error);

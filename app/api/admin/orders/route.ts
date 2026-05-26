@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
-import { listOrdersForAdmin } from "@/lib/services/order.service";
+import { listOrdersForAdminCached } from "@/lib/services/order.service";
 import { handleServiceError } from "@/lib/services/service-error";
 import { adminOrderQuerySchema } from "@/lib/validations/order.validation";
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { items, meta } = await listOrdersForAdmin(parsed.data);
+    const { items, meta } = await listOrdersForAdminCached(parsed.data);
     return ok(items, meta);
   } catch (error) {
     return handleServiceError("admin.orders.GET", error);

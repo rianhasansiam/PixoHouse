@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
@@ -42,6 +43,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const order = await updatePaymentStatus(id, parsed.data);
+    revalidateTag("admin-orders", "max");
     return ok(order);
   } catch (error) {
     return handleServiceError("admin.orders/[id].payment-status.PATCH", error);
