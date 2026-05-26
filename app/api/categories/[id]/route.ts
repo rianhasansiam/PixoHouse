@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
@@ -60,6 +61,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const category = await updateCategory(id, parsed.data);
+    revalidateTag("categories", "max");
+    revalidateTag("home-categories", "max");
     return ok(category);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -100,6 +103,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
   try {
     const category = await softDeleteCategory(id);
+    revalidateTag("categories", "max");
+    revalidateTag("home-categories", "max");
     return ok(category);
   } catch (error) {
     if (

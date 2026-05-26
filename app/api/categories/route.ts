@@ -1,12 +1,13 @@
 import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
 import { created, jsonError, ok } from "@/lib/api/response";
 import {
   createCategory,
-  listCategories,
+  listCategoriesCached,
 } from "@/lib/services/category.service";
 import {
   categoryQuerySchema,
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { items, meta } = await listCategories(parsed.data);
+    const { items, meta } = await listCategoriesCached(parsed.data);
     return ok(items, meta);
   } catch (error) {
     console.error("[categories.GET] failed", error);
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const category = await createCategory(parsed.data);
+    revalidateTag("categories", "max");
+    revalidateTag("home-categories", "max");
     return created(category);
   } catch (error) {
     // P2002 = unique constraint violation. Shouldn't normally happen

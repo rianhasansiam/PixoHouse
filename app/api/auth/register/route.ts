@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { isAllowedOrigin } from "@/lib/auth/origin";
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, name: true, email: true, role: true },
     });
+
+    revalidateTag("admin-users", "max");
 
     return Response.json({ user }, { status: 201 });
   } catch (error) {

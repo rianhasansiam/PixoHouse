@@ -5,13 +5,13 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 type PromoBanner = {
-  id: number
+  id: string
   image: string
   title: string
   subtitle: string
   discount: string
   bgClass: string
-  link: string
+  link: string | null
 }
 
 type PromoBannersProps = {
@@ -28,7 +28,7 @@ const PromoBanners: React.FC<PromoBannersProps> = ({ banners }) => {
       {banners.map((banner) => (
         <Link
           key={banner.id}
-          href={banner.link}
+          href={banner.link ?? "#"}
           className={`block relative h-48 rounded-2xl overflow-hidden ${banner.bgClass} group`}
         >
           <Image

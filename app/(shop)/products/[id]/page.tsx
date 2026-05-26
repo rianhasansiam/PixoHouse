@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import {
+  getActiveDealBanners,
+  getActivePromoBanners,
+} from "@/lib/services/banner.service";
+import {
   getProductById,
   listProducts,
 } from "@/lib/services/product.service";
 
 import Breadcrumbs from "./components/Breadcrumbs";
 import DealsCarousel from "./components/DealsCarousel";
-import NearbyDealsCard from "./components/NearbyDealsCard";
+
 import ProductActions from "./components/ProductActions";
 import ProductGallery from "./components/ProductGallery";
 import ProductInfo from "./components/ProductInfo";
 import PromoBanners from "./components/PromoBanners";
 import RecentProducts from "./components/RecentProducts";
 import RelatedProducts from "./components/RelatedProducts";
-import { DEAL_BANNERS, PROMO_BANNERS } from "./components/banners";
 
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
@@ -77,14 +80,20 @@ export default async function ProductDetailsPage({ params }: Props) {
   const discount = discountPercent(price, originalPrice);
 
   // Pull a generous batch from the same category so we can split it into
-  // recent + related without hitting the DB twice.
-  const { items: relatedRows } = await listProducts({
-    page: 1,
-    pageSize: 24,
-    categoryId: product.categoryId,
-    status: "ACTIVE",
-    sort: "latest",
-  });
+  // recent + related without hitting the DB twice. Banners come from
+  // their own cached services so a marketing change shows up here on the
+  // next request without a full deploy.
+  const [{ items: relatedRows }, dealBanners, promoBanners] = await Promise.all([
+    listProducts({
+      page: 1,
+      pageSize: 24,
+      categoryId: product.categoryId,
+      status: "ACTIVE",
+      sort: "latest",
+    }),
+    getActiveDealBanners(),
+    getActivePromoBanners(),
+  ]);
 
   const others = relatedRows.filter((row) => row.id !== product.id);
 
@@ -125,9 +134,7 @@ export default async function ProductDetailsPage({ params }: Props) {
           <div className="lg:col-span-4">
             <ProductGallery images={galleryImages} productName={product.name} />
 
-            <div className="mt-4">
-              <NearbyDealsCard size="lg" />
-            </div>
+           
           </div>
 
           <div className="lg:col-span-5">
@@ -156,12 +163,10 @@ export default async function ProductDetailsPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="mt-6 lg:hidden">
-          <NearbyDealsCard size="sm" />
-        </div>
+        
 
         <div className="mt-10">
-          <DealsCarousel deals={DEAL_BANNERS} title="Black Friday Deals" />
+          <DealsCarousel deals={dealBanners} title="Black Friday Deals" />
         </div>
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-12">
@@ -173,7 +178,7 @@ export default async function ProductDetailsPage({ params }: Props) {
           </div>
 
           <div className="lg:col-span-3">
-            <PromoBanners banners={PROMO_BANNERS} />
+            <PromoBanners banners={promoBanners} />
           </div>
         </div>
       </div>

@@ -38,5 +38,18 @@ export function handleServiceError(scope: string, error: unknown) {
   }
 
   console.error(`[${scope}] failed`, error);
+
+  // In development, surface the underlying error message + scope so the
+  // UI can render something actionable instead of the generic copy.
+  // In production we still return the generic message so we don't leak
+  // stack traces or driver internals to the client.
+  if (process.env.NODE_ENV !== "production") {
+    const message = error instanceof Error ? error.message : String(error);
+    return jsonError(500, `[${scope}] ${message}`, {
+      scope,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+
   return jsonError(500, "Something went wrong. Please try again.");
 }

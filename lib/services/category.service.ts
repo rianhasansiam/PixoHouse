@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Prisma } from "@prisma/client";
+import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import type {
@@ -118,6 +119,21 @@ export async function listCategories(query: CategoryQueryInput) {
       totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
     },
   };
+}
+
+/**
+ * Cache layer over `listCategories`. Tagged `categories` so any
+ * create / update / soft-delete can bust it on demand. Same 300s TTL
+ * as products and orders to stay consistent across the admin panel.
+ */
+const getCachedCategoryList = unstable_cache(
+  async (query: CategoryQueryInput) => listCategories(query),
+  ["categories-list"],
+  { revalidate: 300, tags: ["categories"] },
+);
+
+export function listCategoriesCached(query: CategoryQueryInput) {
+  return getCachedCategoryList(query);
 }
 
 /** Single category + product count, or `null` if not found. */

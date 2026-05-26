@@ -10,6 +10,7 @@ import {
   FolderTree,
   BarChart3,
   Settings,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -25,6 +26,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, badge: "32" },
   { href: "/admin/users", label: "Customers", icon: Users },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
+  { href: "/admin/banners", label: "Banners", icon: ImageIcon },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

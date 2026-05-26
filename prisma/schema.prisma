@@ -252,3 +252,100 @@ enum TopBannerStatus {
   ACTIVE
   INACTIVE
 }
+
+// Compact deal cards rendered in the horizontal carousel on the
+// product-details page. Managed from the admin "Banners" page.
+model DealBanner {
+  id       String  @id @default(cuid())
+  image    String
+  title    String // e.g. "Up to 70% Off"
+  subtitle String // e.g. "Black Friday"
+  bgClass  String // tailwind bg utility, e.g. "bg-rose-500"
+  link     String?
+  position Int     @default(0)
+
+  status DealBannerStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, position])
+}
+
+enum DealBannerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Tall side-rail promo banners on the product-details page.
+// Managed from the admin "Banners" page.
+model PromoBanner {
+  id       String  @id @default(cuid())
+  image    String
+  title    String // e.g. "Mega Sale"
+  subtitle String // e.g. "Save Big Today"
+  discount String // e.g. "UP TO 60% OFF"
+  bgClass  String // tailwind bg utility, e.g. "bg-violet-700"
+  link     String?
+  position Int     @default(0)
+
+  status PromoBannerStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, position])
+}
+
+enum PromoBannerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Discount codes the customer can apply at checkout.
+// Managed from the admin "Settings" page.
+model PromoCode {
+  id           String           @id @default(cuid())
+  code         String           @unique // case-insensitive at the service layer
+  description  String?
+  discountType PromoDiscountType @default(FLAT)
+  // FLAT: amount in currency units. PERCENT: 0..100 percentage of subtotal.
+  value        Float
+  minOrder     Float?           // minimum subtotal required to apply
+  maxDiscount  Float?           // optional cap when discountType is PERCENT
+  startsAt     DateTime?
+  endsAt       DateTime?
+  usageLimit   Int?             // total uses allowed across all customers
+  usedCount    Int              @default(0)
+  status       PromoCodeStatus  @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, code])
+}
+
+enum PromoDiscountType {
+  FLAT
+  PERCENT
+}
+
+enum PromoCodeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// Singleton row that stores cart-time settings the admin can tune
+// without a deploy: tax rate, delivery charge, and free shipping
+// threshold. Service ensures exactly one row exists.
+model StoreSettings {
+  id                    String @id @default(cuid())
+  taxRate               Float  @default(0.05)   // 0..1, e.g. 0.05 = 5%
+  standardShippingFee   Float  @default(120)
+  freeShippingThreshold Float  @default(50000)  // BDT subtotal at which delivery is free
+  expressShippingFee    Float  @default(250)
+  currency              String @default("BDT")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
