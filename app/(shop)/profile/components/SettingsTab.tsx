@@ -197,20 +197,13 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
           maxLength={FIELD_LIMITS.NAME_MAX}
           valid={validity.name}
         />
-        <div className="relative">
-          <FloatField
-            icon={<Mail className="h-4 w-4" />}
-            label="Email address"
-            value={user.email}
-            onChange={() => undefined}
-            autoComplete="email"
-            valid={emailLooksValid ? true : null}
-          />
-          <span className="pointer-events-none absolute inset-0 cursor-not-allowed rounded-xl bg-violet-50/60" />
-          <p className="mt-1 text-[11px] text-gray-500">
-            Email is locked. Contact support to change it.
-          </p>
-        </div>
+        <ReadOnlyField
+          icon={<Mail className="h-4 w-4" />}
+          label="Email address"
+          value={user.email}
+          help="Email is locked. Contact support to change it."
+          valid={emailLooksValid}
+        />
         <FloatField
           icon={<Phone className="h-4 w-4" />}
           label="Phone number"
@@ -293,5 +286,45 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
         </div>
       </div>
     </form>
+  );
+}
+
+/**
+ * Read-only equivalent of `FloatField` used for fields the user can
+ * see but not edit (e.g. email). Keeps visual parity with the rest of
+ * the form without needing to layer a clickable mask over the real
+ * input.
+ */
+function ReadOnlyField({
+  icon,
+  label,
+  value,
+  help,
+  valid,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  help?: string;
+  valid?: boolean;
+}) {
+  return (
+    <div>
+      <div className="relative rounded-xl border border-violet-200 bg-violet-50/60 shadow-sm">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-500">
+          {icon}
+        </span>
+        <span className="absolute -top-2 left-3 bg-white px-1.5 text-[11px] font-bold uppercase tracking-wide text-violet-700">
+          {label}
+        </span>
+        <div className="flex h-12 items-center pl-9 pr-9 text-sm font-medium text-gray-700">
+          <span className="truncate">{value}</span>
+        </div>
+        {valid && (
+          <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+        )}
+      </div>
+      {help && <p className="mt-1 text-[11px] text-gray-500">{help}</p>}
+    </div>
   );
 }
