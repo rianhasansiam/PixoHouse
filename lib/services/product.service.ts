@@ -20,11 +20,94 @@ import type {
 /** Fields the API returns alongside the product. */
 const productInclude = {
   category: { select: { id: true, name: true, image: true } },
+  images: { orderBy: { position: "asc" } },
+  variants: { orderBy: { createdAt: "asc" } },
 } satisfies Prisma.ProductInclude;
 
 export type ProductWithCategory = Prisma.ProductGetPayload<{
   include: typeof productInclude;
 }>;
+
+/** Effective unit price of a product's primary variant (sale when valid). */
+function primaryVariantPrice(product: ProductWithCategory): number {
+  const variant = product.variants[0];
+  if (!variant) return 0;
+  const price = variant.price;
+  const sale = variant.salePrice;
+  return sale != null && sale.lessThan(price)
+    ? sale.toNumber()
+    : price.toNumber();
+}
+
+/**
+ * Flatten a variant-based product into the legacy flat shape the API
+ * has always exposed (price/discountPrice/image/images/stock), so
+ * existing clients keep working. Price/stock come from the primary
+ * variant; images come from the ProductImage rows. rating/reviewCount/
+ * badge were dropped in the variant migration and default here.
+ */
+export function serializeProduct(product: ProductWithCategory) {
+  const variant = product.variants[0];
+  const listPrice = variant ? variant.price.toNumber() : 0;
+  const sale =
+    variant && variant.salePrice != null ? variant.salePrice.toNumber() : null;
+  const discountPrice = sale != null && sale < listPrice ? sale : null;
+  const imageUrls = product.images.map((img) => img.url);
+
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    price: listPrice,
+    discountPrice,
+    stock: variant?.stock ?? 0,
+    image: imageUrls[0] ?? null,
+    images: imageUrls,
+    rating: 0,
+    reviewCount: 0,
+    badge: null as string | null,
+    status: product.status,
+    categoryId: product.categoryId,
+    category: {
+      id: product.category.id,
+      name: product.category.name,
+      image: product.category.image,
+    },
+    // Expose the structured data too for clients that want it.
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      sku: v.sku,
+      color: v.color,
+      size: v.size,
+      price: v.price.toNumber(),
+      salePrice: v.salePrice != null ? v.salePrice.toNumber() : null,
+      stock: v.stock,
+    })),
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+  };
+}
+
+/** Slugify a product name into a URL-safe, unique-ish slug. */
+function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "product";
+}
+
+/** Ensure a slug is unique by appending a short random suffix on collision. */
+async function uniqueSlug(name: string): Promise<string> {
+  const base = slugify(name);
+  const existing = await prisma.product.findUnique({
+    where: { slug: base },
+    select: { id: true },
+  });
+  if (!existing) return base;
+  return `${base}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 /** Build the Prisma `where` clause from validated query params. */
 function buildWhere(query: ProductQueryInput): Prisma.ProductWhereInput {
@@ -46,25 +129,37 @@ function buildWhere(query: ProductQueryInput): Prisma.ProductWhereInput {
   if (query.status) where.status = query.status;
 
   if (query.minPrice != null || query.maxPrice != null) {
-    where.price = {
-      ...(query.minPrice != null ? { gte: query.minPrice } : {}),
-      ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
+    // Price now lives on the product's variants, so filter by any
+    // variant whose price falls in range.
+    where.variants = {
+      some: {
+        price: {
+          ...(query.minPrice != null ? { gte: query.minPrice } : {}),
+          ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
+        },
+      },
     };
   }
 
   return where;
 }
 
-/** Map our public `sort` value to a Prisma `orderBy`. */
+/**
+ * Map our public `sort` value to a Prisma `orderBy`.
+ *
+ * Price now lives on the to-many `variants` relation, which Prisma
+ * can't order a product list by directly. We keep the list query
+ * stable by sorting on `createdAt` and re-ordering price-sorted
+ * results in `listProducts` after the rows (with their primary
+ * variant) are loaded.
+ */
 function buildOrderBy(
   sort: ProductQueryInput["sort"],
 ): Prisma.ProductOrderByWithRelationInput {
   switch (sort) {
-    case "price-low":
-      return { price: "asc" };
-    case "price-high":
-      return { price: "desc" };
     case "latest":
+    case "price-low":
+    case "price-high":
     default:
       return { createdAt: "desc" };
   }
@@ -88,8 +183,17 @@ export async function listProducts(query: ProductQueryInput) {
     prisma.product.count({ where }),
   ]);
 
+  // Price lives on variants, so price sorting is applied after load.
+  let sortedItems = items;
+  if (query.sort === "price-low" || query.sort === "price-high") {
+    const dir = query.sort === "price-low" ? 1 : -1;
+    sortedItems = [...items].sort(
+      (a, b) => (primaryVariantPrice(a) - primaryVariantPrice(b)) * dir,
+    );
+  }
+
   return {
-    items,
+    items: sortedItems,
     meta: {
       page: query.page,
       pageSize: query.pageSize,
@@ -116,47 +220,108 @@ export function getProductById(id: string) {
   });
 }
 
-export function createProduct(input: CreateProductInput) {
-  // Drop `null` for optional Prisma fields so the DB defaults stay clean.
+export async function createProduct(input: CreateProductInput) {
+  // The product holds catalog data; price/stock live on a default
+  // variant and images become ProductImage rows. We keep the legacy
+  // flat input shape and map it onto the new model here.
+  const slug = await uniqueSlug(input.name);
+  const imageUrls = [
+    ...(input.image ? [input.image] : []),
+    ...(input.images ?? []),
+  ];
+  // De-dupe while preserving order.
+  const uniqueImages = Array.from(new Set(imageUrls));
+
   return prisma.product.create({
     data: {
       name: input.name,
+      slug,
       description: input.description ?? null,
-      price: input.price,
-      discountPrice: input.discountPrice ?? null,
-      stock: input.stock,
-      image: input.image ?? null,
-      images: input.images ?? [],
-      badge: input.badge ?? null,
       status: input.status,
       categoryId: input.categoryId,
+      variants: {
+        create: {
+          sku: `SKU-${slug}-${Math.random().toString(36).slice(2, 8)}`,
+          price: input.price,
+          salePrice: input.discountPrice ?? null,
+          stock: input.stock,
+        },
+      },
+      images: {
+        create: uniqueImages.map((url, index) => ({
+          url,
+          position: index,
+        })),
+      },
     },
     include: productInclude,
   });
 }
 
-export function updateProduct(id: string, input: UpdateProductInput) {
-  // Build the `data` object explicitly so we never write `undefined`
-  // (Prisma treats `undefined` as "skip", but being explicit is clearer).
-  const data: Prisma.ProductUpdateInput = {};
-  if (input.name !== undefined) data.name = input.name;
-  if (input.description !== undefined) data.description = input.description;
-  if (input.price !== undefined) data.price = input.price;
-  if (input.discountPrice !== undefined)
-    data.discountPrice = input.discountPrice;
-  if (input.stock !== undefined) data.stock = input.stock;
-  if (input.image !== undefined) data.image = input.image;
-  if (input.images !== undefined) data.images = input.images;
-  if (input.badge !== undefined) data.badge = input.badge;
-  if (input.status !== undefined) data.status = input.status;
+export async function updateProduct(id: string, input: UpdateProductInput) {
+  // Catalog-level fields go on the product; price/stock map onto the
+  // primary variant; image changes replace the ProductImage set.
+  const productData: Prisma.ProductUpdateInput = {};
+  if (input.name !== undefined) productData.name = input.name;
+  if (input.description !== undefined) {
+    productData.description = input.description;
+  }
+  if (input.status !== undefined) productData.status = input.status;
   if (input.categoryId !== undefined) {
-    data.category = { connect: { id: input.categoryId } };
+    productData.category = { connect: { id: input.categoryId } };
   }
 
-  return prisma.product.update({
-    where: { id },
-    data,
-    include: productInclude,
+  // Resolve the primary variant for price/stock updates.
+  const primaryVariant =
+    input.price !== undefined ||
+    input.discountPrice !== undefined ||
+    input.stock !== undefined
+      ? await prisma.productVariant.findFirst({
+          where: { productId: id },
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        })
+      : null;
+
+  return prisma.$transaction(async (tx) => {
+    await tx.product.update({ where: { id }, data: productData });
+
+    if (primaryVariant) {
+      const variantData: Prisma.ProductVariantUpdateInput = {};
+      if (input.price !== undefined) variantData.price = input.price;
+      if (input.discountPrice !== undefined) {
+        variantData.salePrice = input.discountPrice;
+      }
+      if (input.stock !== undefined) variantData.stock = input.stock;
+      await tx.productVariant.update({
+        where: { id: primaryVariant.id },
+        data: variantData,
+      });
+    }
+
+    // Replace the image set when the caller provided image fields.
+    if (input.image !== undefined || input.images !== undefined) {
+      const imageUrls = [
+        ...(input.image ? [input.image] : []),
+        ...(input.images ?? []),
+      ];
+      const uniqueImages = Array.from(new Set(imageUrls));
+      await tx.productImage.deleteMany({ where: { productId: id } });
+      if (uniqueImages.length > 0) {
+        await tx.productImage.createMany({
+          data: uniqueImages.map((url, index) => ({
+            productId: id,
+            url,
+            position: index,
+          })),
+        });
+      }
+    }
+
+    return tx.product.findUniqueOrThrow({
+      where: { id },
+      include: productInclude,
+    });
   });
 }
 

@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { round2, toNumber } from "@/lib/money";
 
 /**
  * Aggregations powering the admin dashboard page.
@@ -213,8 +214,8 @@ async function loadStats(now: Date): Promise<DashboardStats> {
 
   // Revenue: rounded BDT amounts.
   const revenue = buildStat(
-    money(revenueThis._sum.totalAmount ?? 0),
-    money(revenuePrev._sum.totalAmount ?? 0),
+    money(toNumber(revenueThis._sum.totalAmount)),
+    money(toNumber(revenuePrev._sum.totalAmount)),
   );
 
   const orders = buildStat(ordersThis, ordersPrev);
@@ -232,8 +233,8 @@ async function loadStats(now: Date): Promise<DashboardStats> {
   };
 
   const cancellations = buildStat(
-    money(cancelledThis._sum.totalAmount ?? 0),
-    money(cancelledPrev._sum.totalAmount ?? 0),
+    money(toNumber(cancelledThis._sum.totalAmount)),
+    money(toNumber(cancelledPrev._sum.totalAmount)),
   );
   // For cancellations, "down" is good; the stat object stays signed
   // and the UI can decide which colour to use.
@@ -287,7 +288,7 @@ async function loadSalesSeries(now: Date) {
     const key = row.createdAt.toISOString().slice(0, 10);
     const bucket = buckets.get(key);
     if (!bucket) continue;
-    bucket.revenue = money(bucket.revenue + row.totalAmount);
+    bucket.revenue = money(bucket.revenue + toNumber(row.totalAmount));
     bucket.orders += 1;
   }
 
@@ -334,7 +335,7 @@ async function loadRecentOrders(): Promise<DashboardRecentOrder[]> {
     // `customerEmail` is stored on the order for the receipt; fall
     // back to the linked user when the form didn't ask for one.
     customerEmail: row.customerEmail ?? row.user?.email ?? null,
-    totalAmount: money(row.totalAmount),
+    totalAmount: money(toNumber(row.totalAmount)),
     itemsCount: row._count.items,
     status: row.status,
     paymentStatus: row.paymentStatus,
@@ -350,51 +351,43 @@ async function loadTopProducts(now: Date): Promise<DashboardTopProduct[]> {
   const since = new Date(now);
   since.setUTCDate(since.getUTCDate() - TOP_PRODUCTS_WINDOW_DAYS);
 
-  const grouped = await prisma.orderItem.groupBy({
-    by: ["productId"],
-    where: {
-      order: {
-        createdAt: { gte: since },
-        status: { not: "CANCELLED" },
-      },
-    },
-    _sum: { quantity: true },
-  });
-
-  if (grouped.length === 0) return [];
-
-  // We aggregate units in SQL, but jsut multiplying price*quantity in
-  // Prisma's groupBy isn't supported — so we re-pull the line items
-  // for the top-N products by units and total revenue manually.
-  const productIds = grouped.map((row) => row.productId);
-
+  // Pull line items in the window; each carries its own price snapshot
+  // (unitPrice/totalPrice) so revenue survives product deletion.
   const items = await prisma.orderItem.findMany({
     where: {
-      productId: { in: productIds },
+      productId: { not: null },
       order: {
         createdAt: { gte: since },
         status: { not: "CANCELLED" },
       },
     },
-    select: { productId: true, quantity: true, price: true },
+    select: { productId: true, quantity: true, totalPrice: true },
   });
+
+  if (items.length === 0) return [];
 
   const stats = new Map<string, { units: number; revenue: number }>();
   for (const item of items) {
+    if (item.productId == null) continue;
     const bucket = stats.get(item.productId) ?? { units: 0, revenue: 0 };
     bucket.units += item.quantity;
-    bucket.revenue += item.quantity * item.price;
+    bucket.revenue = round2(bucket.revenue + toNumber(item.totalPrice));
     stats.set(item.productId, bucket);
   }
 
+  const productIds = Array.from(stats.keys());
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
     select: {
       id: true,
       name: true,
-      stock: true,
       status: true,
       category: { select: { name: true } },
+      variants: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { stock: true },
+      },
     },
   });
   const productMap = new Map(products.map((row) => [row.id, row]));
@@ -408,7 +401,7 @@ async function loadTopProducts(now: Date): Promise<DashboardTopProduct[]> {
         category: product?.category?.name ?? "—",
         unitsSold: bucket.units,
         revenue: money(bucket.revenue),
-        stock: product?.stock ?? 0,
+        stock: product?.variants[0]?.stock ?? 0,
         status: product?.status ?? "INACTIVE",
       } satisfies DashboardTopProduct;
     })

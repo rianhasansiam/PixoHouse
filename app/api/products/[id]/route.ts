@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
-import {getProductById,softDeleteProduct,updateProduct,} from "@/lib/services/product.service";
+import {getProductById,serializeProduct,softDeleteProduct,updateProduct,} from "@/lib/services/product.service";
 import { updateProductSchema } from "@/lib/validations/product.validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const product = await getProductById(id);
     if (!product) return jsonError(404, "Product not found.");
-    return ok(product);
+    return ok(serializeProduct(product));
   } catch (error) {
     console.error("[products/[id].GET] failed", error);
     return jsonError(500, "Failed to fetch product.");
@@ -71,15 +71,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   // Cross-field check: if either price or discountPrice is being updated,
-  // the resulting pair must still satisfy discount <= price.
+  // the resulting pair must still satisfy discount <= price. Price now
+  // lives on the product's primary variant.
   const existing = await getProductById(id);
   if (!existing) return jsonError(404, "Product not found.");
 
-  const nextPrice = parsed.data.price ?? existing.price;
+  const primaryVariant = existing.variants[0];
+  const existingPrice = primaryVariant ? primaryVariant.price.toNumber() : 0;
+  const existingDiscount =
+    primaryVariant && primaryVariant.salePrice != null
+      ? primaryVariant.salePrice.toNumber()
+      : null;
+
+  const nextPrice = parsed.data.price ?? existingPrice;
   const nextDiscount =
     parsed.data.discountPrice !== undefined
       ? parsed.data.discountPrice
-      : existing.discountPrice;
+      : existingDiscount;
   if (nextDiscount != null && nextDiscount > nextPrice) {
     return jsonError(400, "Discount price cannot exceed the regular price.", {
       fieldErrors: { discountPrice: ["Discount price exceeds price."] },
@@ -90,7 +98,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const product = await updateProduct(id, parsed.data);
     revalidateTag("products", "max");
     revalidateTag("home-categories", "max");
-    return ok(product);
+    return ok(serializeProduct(product));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -135,7 +143,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const product = await softDeleteProduct(id);
     revalidateTag("products", "max");
     revalidateTag("home-categories", "max");
-    return ok(product);
+    return ok(serializeProduct(product));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

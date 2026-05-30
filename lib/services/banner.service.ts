@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Prisma } from "@prisma/client";
+import type { BannerType } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
@@ -21,10 +22,15 @@ import type {
 /**
  * The single home for Banner DB logic.
  *
- * Three independent surfaces (carousel, category, top) live in their
- * own Prisma models. We expose CRUD helpers per surface plus one
- * `listAllBannersForAdmin` aggregate so the admin page can hydrate
- * every tab in a single round trip.
+ * All five marketing surfaces (carousel, category, top, deal, promo)
+ * are stored in ONE unified `Banner` table, discriminated by `type`.
+ * Type-specific fields (gradients, icons, badges, etc.) live in the
+ * `metadata` JSON column.
+ *
+ * This service acts as the adapter between that unified storage and
+ * the flat, per-surface row shapes the admin UI and storefront have
+ * always consumed — so the routes, Redux store, and components stay
+ * unchanged while the schema underneath is clean and consolidated.
  */
 
 export class BannerError extends ServiceError {
@@ -39,136 +45,279 @@ export class BannerError extends ServiceError {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Selects                                                                   */
+/*  Flat row shapes (the public contract, unchanged from before)              */
 /* -------------------------------------------------------------------------- */
 
-const carouselSelect = {
+type BannerStatus = "ACTIVE" | "INACTIVE";
+
+export type CarouselBannerRow = {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  badge: string;
+  bgFrom: string;
+  bgVia: string | null;
+  bgTo: string;
+  link: string | null;
+  position: number;
+  status: BannerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CategoryBannerRow = {
+  id: string;
+  image: string;
+  label: string;
+  heading: string;
+  discount: string;
+  description: string;
+  link: string | null;
+  categoryId: string;
+  status: BannerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  category: { id: string; name: string; slug: string };
+};
+
+export type TopBannerRow = {
+  id: string;
+  icon: string;
+  badge: string;
+  discount: string;
+  description: string;
+  tag: string;
+  tagIcon: string;
+  position: number;
+  status: BannerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type DealBannerRow = {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  bgClass: string;
+  link: string | null;
+  position: number;
+  status: BannerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PromoBannerRow = {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  discount: string;
+  bgClass: string;
+  link: string | null;
+  position: number;
+  status: BannerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Metadata helpers                                                          */
+/* -------------------------------------------------------------------------- */
+
+type Meta = Record<string, string | null>;
+
+function readMeta(value: Prisma.JsonValue | null): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function metaStr(meta: Record<string, unknown>, key: string): string {
+  const v = meta[key];
+  return typeof v === "string" ? v : "";
+}
+
+function metaStrOrNull(meta: Record<string, unknown>, key: string): string | null {
+  const v = meta[key];
+  return typeof v === "string" ? v : null;
+}
+
+/** Strip null/undefined entries so we never persist empty keys. */
+function cleanMeta(meta: Meta): Prisma.InputJsonValue {
+  const out: Record<string, string> = {};
+  for (const [key, val] of Object.entries(meta)) {
+    if (typeof val === "string") out[key] = val;
+  }
+  return out;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Common select                                                             */
+/* -------------------------------------------------------------------------- */
+
+const bannerSelect = {
   id: true,
-  image: true,
+  type: true,
   title: true,
   subtitle: true,
   description: true,
-  badge: true,
-  bgFrom: true,
-  bgVia: true,
-  bgTo: true,
+  image: true,
   link: true,
   position: true,
   status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.CarouselBannerSelect;
-
-const categoryBannerSelect = {
-  id: true,
-  image: true,
-  label: true,
-  heading: true,
-  discount: true,
-  description: true,
-  link: true,
   categoryId: true,
-  status: true,
+  metadata: true,
   createdAt: true,
   updatedAt: true,
+} satisfies Prisma.BannerSelect;
+
+const bannerWithCategorySelect = {
+  ...bannerSelect,
   category: { select: { id: true, name: true, slug: true } },
-} satisfies Prisma.CategoryBannerSelect;
+} satisfies Prisma.BannerSelect;
 
-const topBannerSelect = {
-  id: true,
-  icon: true,
-  badge: true,
-  discount: true,
-  description: true,
-  tag: true,
-  tagIcon: true,
-  position: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.TopBannerSelect;
+type BannerRow = Prisma.BannerGetPayload<{ select: typeof bannerSelect }>;
+type BannerRowWithCategory = Prisma.BannerGetPayload<{
+  select: typeof bannerWithCategorySelect;
+}>;
 
-const dealBannerSelect = {
-  id: true,
-  image: true,
-  title: true,
-  subtitle: true,
-  bgClass: true,
-  link: true,
-  position: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.DealBannerSelect;
+/* -------------------------------------------------------------------------- */
+/*  Row mappers (unified Banner -> flat shapes)                               */
+/* -------------------------------------------------------------------------- */
 
-const promoBannerSelect = {
-  id: true,
-  image: true,
-  title: true,
-  subtitle: true,
-  discount: true,
-  bgClass: true,
-  link: true,
-  position: true,
-  status: true,
-  createdAt: true,
-  updatedAt: true,
-} satisfies Prisma.PromoBannerSelect;
+function toCarouselRow(b: BannerRow): CarouselBannerRow {
+  const meta = readMeta(b.metadata);
+  return {
+    id: b.id,
+    image: b.image ?? "",
+    title: b.title ?? "",
+    subtitle: b.subtitle ?? "",
+    description: b.description ?? "",
+    badge: metaStr(meta, "badge"),
+    bgFrom: metaStr(meta, "bgFrom"),
+    bgVia: metaStrOrNull(meta, "bgVia"),
+    bgTo: metaStr(meta, "bgTo"),
+    link: b.link,
+    position: b.position,
+    status: b.status,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+  };
+}
 
-export type CarouselBannerRow = Prisma.CarouselBannerGetPayload<{
-  select: typeof carouselSelect;
-}>;
-export type CategoryBannerRow = Prisma.CategoryBannerGetPayload<{
-  select: typeof categoryBannerSelect;
-}>;
-export type TopBannerRow = Prisma.TopBannerGetPayload<{
-  select: typeof topBannerSelect;
-}>;
-export type DealBannerRow = Prisma.DealBannerGetPayload<{
-  select: typeof dealBannerSelect;
-}>;
-export type PromoBannerRow = Prisma.PromoBannerGetPayload<{
-  select: typeof promoBannerSelect;
-}>;
+function toCategoryRow(b: BannerRowWithCategory): CategoryBannerRow {
+  const meta = readMeta(b.metadata);
+  return {
+    id: b.id,
+    image: b.image ?? "",
+    label: metaStr(meta, "label"),
+    heading: metaStr(meta, "heading"),
+    discount: metaStr(meta, "discount"),
+    description: b.description ?? "",
+    link: b.link,
+    categoryId: b.categoryId ?? "",
+    status: b.status,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+    category: b.category
+      ? { id: b.category.id, name: b.category.name, slug: b.category.slug }
+      : { id: b.categoryId ?? "", name: "", slug: "" },
+  };
+}
+
+function toTopRow(b: BannerRow): TopBannerRow {
+  const meta = readMeta(b.metadata);
+  return {
+    id: b.id,
+    icon: metaStr(meta, "icon"),
+    badge: metaStr(meta, "badge"),
+    discount: metaStr(meta, "discount"),
+    description: b.description ?? "",
+    tag: metaStr(meta, "tag"),
+    tagIcon: metaStr(meta, "tagIcon"),
+    position: b.position,
+    status: b.status,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+  };
+}
+
+function toDealRow(b: BannerRow): DealBannerRow {
+  const meta = readMeta(b.metadata);
+  return {
+    id: b.id,
+    image: b.image ?? "",
+    title: b.title ?? "",
+    subtitle: b.subtitle ?? "",
+    bgClass: metaStr(meta, "bgClass"),
+    link: b.link,
+    position: b.position,
+    status: b.status,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+  };
+}
+
+function toPromoRow(b: BannerRow): PromoBannerRow {
+  const meta = readMeta(b.metadata);
+  return {
+    id: b.id,
+    image: b.image ?? "",
+    title: b.title ?? "",
+    subtitle: b.subtitle ?? "",
+    discount: metaStr(meta, "discount"),
+    bgClass: metaStr(meta, "bgClass"),
+    link: b.link,
+    position: b.position,
+    status: b.status,
+    createdAt: b.createdAt,
+    updatedAt: b.updatedAt,
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Aggregate read for admin                                                  */
 /* -------------------------------------------------------------------------- */
 
 export async function listAllBannersForAdmin() {
-  const [carousel, category, top, deal, promo] = await Promise.all([
-    prisma.carouselBanner.findMany({
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: carouselSelect,
-    }),
-    prisma.categoryBanner.findMany({
-      orderBy: { createdAt: "desc" },
-      select: categoryBannerSelect,
-    }),
-    prisma.topBanner.findMany({
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: topBannerSelect,
-    }),
-    prisma.dealBanner.findMany({
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: dealBannerSelect,
-    }),
-    prisma.promoBanner.findMany({
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: promoBannerSelect,
-    }),
-  ]);
+  const rows = await prisma.banner.findMany({
+    orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+    select: bannerWithCategorySelect,
+  });
+
+  const carousel: CarouselBannerRow[] = [];
+  const category: CategoryBannerRow[] = [];
+  const top: TopBannerRow[] = [];
+  const deal: DealBannerRow[] = [];
+  const promo: PromoBannerRow[] = [];
+
+  for (const row of rows) {
+    switch (row.type) {
+      case "CAROUSEL":
+        carousel.push(toCarouselRow(row));
+        break;
+      case "CATEGORY":
+        category.push(toCategoryRow(row));
+        break;
+      case "TOP":
+        top.push(toTopRow(row));
+        break;
+      case "DEAL":
+        deal.push(toDealRow(row));
+        break;
+      case "PROMO":
+        promo.push(toPromoRow(row));
+        break;
+    }
+  }
 
   return { carousel, category, top, deal, promo };
 }
 
-/**
- * Cache layer over the admin aggregate. Tagged `admin-banners` so any
- * mutation across all three surfaces busts a single tag. Public-facing
- * banner reads (used by the storefront when wired) carry their own
- * tags — `carousel-banners`, `category-banners`, `top-banners` — so
- * they can be revalidated independently.
- */
 const getCachedAdminBanners = unstable_cache(
   async () => listAllBannersForAdmin(),
   ["admin-banners-aggregate"],
@@ -180,57 +329,95 @@ export function listAllBannersForAdminCached() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Shared delete guard                                                       */
+/* -------------------------------------------------------------------------- */
+
+async function deleteBannerOfType(id: string, type: BannerType) {
+  const existing = await prisma.banner.findFirst({
+    where: { id, type },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new BannerError(404, "Banner not found.");
+  }
+  return prisma.banner.delete({ where: { id }, select: bannerWithCategorySelect });
+}
+
+async function findBannerOfTypeOrThrow(id: string, type: BannerType) {
+  const existing = await prisma.banner.findFirst({
+    where: { id, type },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new BannerError(404, "Banner not found.");
+  }
+  return existing;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Carousel CRUD                                                             */
 /* -------------------------------------------------------------------------- */
 
-export function createCarouselBanner(input: CreateCarouselBannerInput) {
-  return prisma.carouselBanner.create({
+export async function createCarouselBanner(input: CreateCarouselBannerInput) {
+  const row = await prisma.banner.create({
     data: {
+      type: "CAROUSEL",
       image: input.image,
       title: input.title,
       subtitle: input.subtitle,
       description: input.description,
-      badge: input.badge,
-      bgFrom: input.bgFrom,
-      bgVia: input.bgVia ?? null,
-      bgTo: input.bgTo,
       link: input.link ?? null,
       position: input.position,
       status: input.status,
+      metadata: cleanMeta({
+        badge: input.badge,
+        bgFrom: input.bgFrom,
+        bgVia: input.bgVia ?? null,
+        bgTo: input.bgTo,
+      }),
     },
-    select: carouselSelect,
+    select: bannerSelect,
   });
+  return toCarouselRow(row);
 }
 
 export async function updateCarouselBanner(
   id: string,
   input: UpdateCarouselBannerInput,
 ) {
-  const data: Prisma.CarouselBannerUpdateInput = {};
+  await findBannerOfTypeOrThrow(id, "CAROUSEL");
+
+  const current = await prisma.banner.findUnique({
+    where: { id },
+    select: { metadata: true },
+  });
+  const meta = readMeta(current?.metadata ?? null);
+
+  const data: Prisma.BannerUpdateInput = {};
   if (input.image !== undefined) data.image = input.image;
   if (input.title !== undefined) data.title = input.title;
   if (input.subtitle !== undefined) data.subtitle = input.subtitle;
   if (input.description !== undefined) data.description = input.description;
-  if (input.badge !== undefined) data.badge = input.badge;
-  if (input.bgFrom !== undefined) data.bgFrom = input.bgFrom;
-  if (input.bgVia !== undefined) data.bgVia = input.bgVia;
-  if (input.bgTo !== undefined) data.bgTo = input.bgTo;
   if (input.link !== undefined) data.link = input.link;
   if (input.position !== undefined) data.position = input.position;
   if (input.status !== undefined) data.status = input.status;
 
-  return prisma.carouselBanner.update({
+  if (input.badge !== undefined) meta.badge = input.badge;
+  if (input.bgFrom !== undefined) meta.bgFrom = input.bgFrom;
+  if (input.bgVia !== undefined) meta.bgVia = input.bgVia;
+  if (input.bgTo !== undefined) meta.bgTo = input.bgTo;
+  data.metadata = cleanMeta(meta as Meta);
+
+  const row = await prisma.banner.update({
     where: { id },
     data,
-    select: carouselSelect,
+    select: bannerSelect,
   });
+  return toCarouselRow(row);
 }
 
 export function deleteCarouselBanner(id: string) {
-  return prisma.carouselBanner.delete({
-    where: { id },
-    select: carouselSelect,
-  });
+  return deleteBannerOfType(id, "CAROUSEL").then(toCarouselRow);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -238,8 +425,6 @@ export function deleteCarouselBanner(id: string) {
 /* -------------------------------------------------------------------------- */
 
 export async function createCategoryBanner(input: CreateCategoryBannerInput) {
-  // Defensive existence check so we can return a clean 404 instead of
-  // letting Prisma raise a generic FK violation.
   const category = await prisma.category.findUnique({
     where: { id: input.categoryId },
     select: { id: true },
@@ -248,25 +433,31 @@ export async function createCategoryBanner(input: CreateCategoryBannerInput) {
     throw new BannerError(404, "Category not found.");
   }
 
-  return prisma.categoryBanner.create({
+  const row = await prisma.banner.create({
     data: {
+      type: "CATEGORY",
       image: input.image,
-      label: input.label,
-      heading: input.heading,
-      discount: input.discount,
       description: input.description,
       link: input.link ?? null,
       categoryId: input.categoryId,
       status: input.status,
+      metadata: cleanMeta({
+        label: input.label,
+        heading: input.heading,
+        discount: input.discount,
+      }),
     },
-    select: categoryBannerSelect,
+    select: bannerWithCategorySelect,
   });
+  return toCategoryRow(row);
 }
 
 export async function updateCategoryBanner(
   id: string,
   input: UpdateCategoryBannerInput,
 ) {
+  await findBannerOfTypeOrThrow(id, "CATEGORY");
+
   if (input.categoryId !== undefined) {
     const category = await prisma.category.findUnique({
       where: { id: input.categoryId },
@@ -277,11 +468,14 @@ export async function updateCategoryBanner(
     }
   }
 
-  const data: Prisma.CategoryBannerUpdateInput = {};
+  const current = await prisma.banner.findUnique({
+    where: { id },
+    select: { metadata: true },
+  });
+  const meta = readMeta(current?.metadata ?? null);
+
+  const data: Prisma.BannerUpdateInput = {};
   if (input.image !== undefined) data.image = input.image;
-  if (input.label !== undefined) data.label = input.label;
-  if (input.heading !== undefined) data.heading = input.heading;
-  if (input.discount !== undefined) data.discount = input.discount;
   if (input.description !== undefined) data.description = input.description;
   if (input.link !== undefined) data.link = input.link;
   if (input.status !== undefined) data.status = input.status;
@@ -289,179 +483,202 @@ export async function updateCategoryBanner(
     data.category = { connect: { id: input.categoryId } };
   }
 
-  return prisma.categoryBanner.update({
+  if (input.label !== undefined) meta.label = input.label;
+  if (input.heading !== undefined) meta.heading = input.heading;
+  if (input.discount !== undefined) meta.discount = input.discount;
+  data.metadata = cleanMeta(meta as Meta);
+
+  const row = await prisma.banner.update({
     where: { id },
     data,
-    select: categoryBannerSelect,
+    select: bannerWithCategorySelect,
   });
+  return toCategoryRow(row);
 }
 
 export function deleteCategoryBanner(id: string) {
-  return prisma.categoryBanner.delete({
-    where: { id },
-    select: categoryBannerSelect,
-  });
+  return deleteBannerOfType(id, "CATEGORY").then(toCategoryRow);
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Top banner CRUD                                                           */
 /* -------------------------------------------------------------------------- */
 
-export function createTopBanner(input: CreateTopBannerInput) {
-  return prisma.topBanner.create({
+export async function createTopBanner(input: CreateTopBannerInput) {
+  const row = await prisma.banner.create({
     data: {
-      icon: input.icon,
-      badge: input.badge,
-      discount: input.discount,
+      type: "TOP",
       description: input.description,
-      tag: input.tag,
-      tagIcon: input.tagIcon,
       position: input.position,
       status: input.status,
+      metadata: cleanMeta({
+        icon: input.icon,
+        badge: input.badge,
+        discount: input.discount,
+        tag: input.tag,
+        tagIcon: input.tagIcon,
+      }),
     },
-    select: topBannerSelect,
+    select: bannerSelect,
   });
+  return toTopRow(row);
 }
 
-export async function updateTopBanner(
-  id: string,
-  input: UpdateTopBannerInput,
-) {
-  const data: Prisma.TopBannerUpdateInput = {};
-  if (input.icon !== undefined) data.icon = input.icon;
-  if (input.badge !== undefined) data.badge = input.badge;
-  if (input.discount !== undefined) data.discount = input.discount;
+export async function updateTopBanner(id: string, input: UpdateTopBannerInput) {
+  await findBannerOfTypeOrThrow(id, "TOP");
+
+  const current = await prisma.banner.findUnique({
+    where: { id },
+    select: { metadata: true },
+  });
+  const meta = readMeta(current?.metadata ?? null);
+
+  const data: Prisma.BannerUpdateInput = {};
   if (input.description !== undefined) data.description = input.description;
-  if (input.tag !== undefined) data.tag = input.tag;
-  if (input.tagIcon !== undefined) data.tagIcon = input.tagIcon;
   if (input.position !== undefined) data.position = input.position;
   if (input.status !== undefined) data.status = input.status;
 
-  return prisma.topBanner.update({
+  if (input.icon !== undefined) meta.icon = input.icon;
+  if (input.badge !== undefined) meta.badge = input.badge;
+  if (input.discount !== undefined) meta.discount = input.discount;
+  if (input.tag !== undefined) meta.tag = input.tag;
+  if (input.tagIcon !== undefined) meta.tagIcon = input.tagIcon;
+  data.metadata = cleanMeta(meta as Meta);
+
+  const row = await prisma.banner.update({
     where: { id },
     data,
-    select: topBannerSelect,
+    select: bannerSelect,
   });
+  return toTopRow(row);
 }
 
 export function deleteTopBanner(id: string) {
-  return prisma.topBanner.delete({
-    where: { id },
-    select: topBannerSelect,
-  });
+  return deleteBannerOfType(id, "TOP").then(toTopRow);
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Deal banner CRUD (product-details carousel)                               */
 /* -------------------------------------------------------------------------- */
 
-export function createDealBanner(input: CreateDealBannerInput) {
-  return prisma.dealBanner.create({
+export async function createDealBanner(input: CreateDealBannerInput) {
+  const row = await prisma.banner.create({
     data: {
+      type: "DEAL",
       image: input.image,
       title: input.title,
       subtitle: input.subtitle,
-      bgClass: input.bgClass,
       link: input.link ?? null,
       position: input.position,
       status: input.status,
+      metadata: cleanMeta({ bgClass: input.bgClass }),
     },
-    select: dealBannerSelect,
+    select: bannerSelect,
   });
+  return toDealRow(row);
 }
 
-export async function updateDealBanner(
-  id: string,
-  input: UpdateDealBannerInput,
-) {
-  const data: Prisma.DealBannerUpdateInput = {};
+export async function updateDealBanner(id: string, input: UpdateDealBannerInput) {
+  await findBannerOfTypeOrThrow(id, "DEAL");
+
+  const current = await prisma.banner.findUnique({
+    where: { id },
+    select: { metadata: true },
+  });
+  const meta = readMeta(current?.metadata ?? null);
+
+  const data: Prisma.BannerUpdateInput = {};
   if (input.image !== undefined) data.image = input.image;
   if (input.title !== undefined) data.title = input.title;
   if (input.subtitle !== undefined) data.subtitle = input.subtitle;
-  if (input.bgClass !== undefined) data.bgClass = input.bgClass;
   if (input.link !== undefined) data.link = input.link;
   if (input.position !== undefined) data.position = input.position;
   if (input.status !== undefined) data.status = input.status;
 
-  return prisma.dealBanner.update({
+  if (input.bgClass !== undefined) meta.bgClass = input.bgClass;
+  data.metadata = cleanMeta(meta as Meta);
+
+  const row = await prisma.banner.update({
     where: { id },
     data,
-    select: dealBannerSelect,
+    select: bannerSelect,
   });
+  return toDealRow(row);
 }
 
 export function deleteDealBanner(id: string) {
-  return prisma.dealBanner.delete({
-    where: { id },
-    select: dealBannerSelect,
-  });
+  return deleteBannerOfType(id, "DEAL").then(toDealRow);
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Promo banner CRUD (product-details side rail)                             */
 /* -------------------------------------------------------------------------- */
 
-export function createPromoBanner(input: CreatePromoBannerInput) {
-  return prisma.promoBanner.create({
+export async function createPromoBanner(input: CreatePromoBannerInput) {
+  const row = await prisma.banner.create({
     data: {
+      type: "PROMO",
       image: input.image,
       title: input.title,
       subtitle: input.subtitle,
-      discount: input.discount,
-      bgClass: input.bgClass,
       link: input.link ?? null,
       position: input.position,
       status: input.status,
+      metadata: cleanMeta({ discount: input.discount, bgClass: input.bgClass }),
     },
-    select: promoBannerSelect,
+    select: bannerSelect,
   });
+  return toPromoRow(row);
 }
 
 export async function updatePromoBanner(
   id: string,
   input: UpdatePromoBannerInput,
 ) {
-  const data: Prisma.PromoBannerUpdateInput = {};
+  await findBannerOfTypeOrThrow(id, "PROMO");
+
+  const current = await prisma.banner.findUnique({
+    where: { id },
+    select: { metadata: true },
+  });
+  const meta = readMeta(current?.metadata ?? null);
+
+  const data: Prisma.BannerUpdateInput = {};
   if (input.image !== undefined) data.image = input.image;
   if (input.title !== undefined) data.title = input.title;
   if (input.subtitle !== undefined) data.subtitle = input.subtitle;
-  if (input.discount !== undefined) data.discount = input.discount;
-  if (input.bgClass !== undefined) data.bgClass = input.bgClass;
   if (input.link !== undefined) data.link = input.link;
   if (input.position !== undefined) data.position = input.position;
   if (input.status !== undefined) data.status = input.status;
 
-  return prisma.promoBanner.update({
+  if (input.discount !== undefined) meta.discount = input.discount;
+  if (input.bgClass !== undefined) meta.bgClass = input.bgClass;
+  data.metadata = cleanMeta(meta as Meta);
+
+  const row = await prisma.banner.update({
     where: { id },
     data,
-    select: promoBannerSelect,
+    select: bannerSelect,
   });
+  return toPromoRow(row);
 }
 
 export function deletePromoBanner(id: string) {
-  return prisma.promoBanner.delete({
-    where: { id },
-    select: promoBannerSelect,
-  });
+  return deleteBannerOfType(id, "PROMO").then(toPromoRow);
 }
 
 /* -------------------------------------------------------------------------- */
 /*  Public reads for the product-details page                                 */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Active deal banners ordered for display. Tagged `deal-banners` so
- * admin mutations can bust this cache without touching the heavier
- * `admin-banners` aggregate. 5 minute TTL with stale-while-revalidate
- * via `revalidateTag(..., "max")`.
- */
 const getCachedActiveDealBanners = unstable_cache(
   async (): Promise<DealBannerRow[]> => {
-    return prisma.dealBanner.findMany({
-      where: { status: "ACTIVE" },
+    const rows = await prisma.banner.findMany({
+      where: { type: "DEAL", status: "ACTIVE" },
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: dealBannerSelect,
+      select: bannerSelect,
     });
+    return rows.map(toDealRow);
   },
   ["deal-banners-active"],
   { revalidate: 300, tags: ["deal-banners"] },
@@ -471,14 +688,14 @@ export function getActiveDealBanners() {
   return getCachedActiveDealBanners();
 }
 
-/** Same idea, but for the side-rail promo banners. */
 const getCachedActivePromoBanners = unstable_cache(
   async (): Promise<PromoBannerRow[]> => {
-    return prisma.promoBanner.findMany({
-      where: { status: "ACTIVE" },
+    const rows = await prisma.banner.findMany({
+      where: { type: "PROMO", status: "ACTIVE" },
       orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      select: promoBannerSelect,
+      select: bannerSelect,
     });
+    return rows.map(toPromoRow);
   },
   ["promo-banners-active"],
   { revalidate: 300, tags: ["promo-banners"] },

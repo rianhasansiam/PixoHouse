@@ -5,6 +5,7 @@ import type { OrderStatus } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { multiply, round2, sumDecimals, toDecimal, toNumber } from "@/lib/money";
 import { ServiceError } from "@/lib/services/service-error";
 import type {
   AdminOrderQueryInput,
@@ -52,16 +53,18 @@ export class OrderError extends ServiceError {
 const orderItemProductSelect = {
   id: true,
   name: true,
-  image: true,
-  slug: false, // products don't have a slug (yet)
+  slug: true,
 } as const;
 
 const orderItemInclude = {
+  // Order items carry their own productName/productImage/sku snapshot,
+  // so we only need the live product link for navigation (it may be null
+  // if the product was deleted).
   product: {
     select: {
       id: true,
       name: true,
-      image: true,
+      slug: true,
     },
   },
 } satisfies Prisma.OrderItemInclude;
@@ -83,14 +86,68 @@ export type OrderWithItemsAndUser = Prisma.OrderGetPayload<{
 }>;
 
 /* -------------------------------------------------------------------------- */
+/*  Serialization (Decimal -> number for JSON responses)                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Normalize an order row for the API: money Decimals become numbers and
+ * each item is flattened to the snapshot shape the client expects
+ * (productName/productImage/sku/unitPrice/totalPrice), with the live
+ * product link kept (nullable) for navigation.
+ */
+function serializeOrderItem(item: OrderWithItems["items"][number]) {
+  return {
+    id: item.id,
+    productId: item.productId,
+    variantId: item.variantId,
+    productName: item.productName,
+    productImage: item.productImage,
+    sku: item.sku,
+    color: item.color,
+    size: item.size,
+    quantity: item.quantity,
+    unitPrice: toNumber(item.unitPrice),
+    totalPrice: toNumber(item.totalPrice),
+    product: item.product
+      ? { id: item.product.id, name: item.product.name, slug: item.product.slug }
+      : null,
+  };
+}
+
+export function serializeOrder<T extends OrderWithItems>(order: T) {
+  return {
+    ...order,
+    subtotal: toNumber(order.subtotal),
+    deliveryCharge: toNumber(order.deliveryCharge),
+    discountAmount: toNumber(order.discountAmount),
+    taxAmount: toNumber(order.taxAmount),
+    totalAmount: toNumber(order.totalAmount),
+    items: order.items.map(serializeOrderItem),
+  };
+}
+
+export function serializeOrderOrNull<T extends OrderWithItems>(
+  order: T | null,
+) {
+  return order == null ? null : serializeOrder(order);
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Pick the effective unit price the customer should pay. */
-function effectivePrice(product: { price: number; discountPrice: number | null }) {
-  return product.discountPrice != null && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+/** Pick the effective unit price (sale price when valid) as a Decimal. */
+function effectiveVariantPrice(variant: {
+  price: Prisma.Decimal;
+  salePrice: Prisma.Decimal | null;
+}): Prisma.Decimal {
+  if (
+    variant.salePrice != null &&
+    toDecimal(variant.salePrice).lessThan(toDecimal(variant.price))
+  ) {
+    return toDecimal(variant.salePrice);
+  }
+  return toDecimal(variant.price);
 }
 
 /**
@@ -107,16 +164,11 @@ function generateOrderNumber(): string {
   return `ORD-${yy}${mm}${dd}-${rand}`;
 }
 
-/** Round currency to 2 dp to avoid float noise creeping into totals. */
-function money(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 /* -------------------------------------------------------------------------- */
 /*  Create order                                                              */
 /* -------------------------------------------------------------------------- */
 
-type ResolvedItem = { productId: string; quantity: number };
+type ResolvedItem = { productId: string; variantId?: string; quantity: number };
 
 async function resolveItems(
   userId: string,
@@ -128,7 +180,7 @@ async function resolveItems(
 
   const cart = await prisma.cartItem.findMany({
     where: { userId },
-    select: { productId: true, quantity: true },
+    select: { productId: true, variantId: true, quantity: true },
   });
 
   if (cart.length === 0) {
@@ -137,23 +189,45 @@ async function resolveItems(
       "Your cart is empty. Add items before placing an order.",
     );
   }
-  return { items: cart, fromCart: true };
+  return {
+    items: cart.map((row) => ({
+      productId: row.productId,
+      variantId: row.variantId,
+      quantity: row.quantity,
+    })),
+    fromCart: true,
+  };
 }
 
 export async function createOrder(userId: string, input: CreateOrderInput) {
   const { items, fromCart } = await resolveItems(userId, input);
 
-  // Load all products in one query and build a quick lookup.
+  // Load all products (with their primary variant + first image) in one
+  // query and build a quick lookup.
   const productIds = items.map((i) => i.productId);
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
     select: {
       id: true,
       name: true,
-      price: true,
-      discountPrice: true,
-      stock: true,
       status: true,
+      images: {
+        orderBy: { position: "asc" },
+        take: 1,
+        select: { url: true },
+      },
+      variants: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          sku: true,
+          color: true,
+          size: true,
+          price: true,
+          salePrice: true,
+          stock: true,
+        },
+      },
     },
   });
   const productMap = new Map(products.map((p) => [p.id, p]));
@@ -172,27 +246,53 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
         { productId: product.id },
       );
     }
-    if (product.stock < line.quantity) {
+    const variant = line.variantId
+      ? product.variants.find((v) => v.id === line.variantId)
+      : product.variants[0];
+    if (!variant) {
       throw new OrderError(
         409,
-        `Not enough stock for "${product.name}". Available: ${product.stock}.`,
-        { productId: product.id, available: product.stock },
+        line.variantId
+          ? `Selected variant for "${product.name}" is no longer available.`
+          : `"${product.name}" has no purchasable variant.`,
+        { productId: product.id },
       );
     }
-    const unitPrice = effectivePrice(product);
+    if (variant.stock < line.quantity) {
+      throw new OrderError(
+        409,
+        `Not enough stock for "${product.name}". Available: ${variant.stock}.`,
+        { productId: product.id, available: variant.stock },
+      );
+    }
+    const unitPrice = effectiveVariantPrice(variant);
     return {
       productId: product.id,
+      variantId: variant.id,
+      sku: variant.sku,
+      color: variant.color,
+      size: variant.size,
       name: product.name,
+      image: product.images[0]?.url ?? null,
       quantity: line.quantity,
       unitPrice,
-      lineTotal: money(unitPrice * line.quantity),
+      lineTotal: multiply(unitPrice, line.quantity),
     };
   });
 
-  const subtotal = money(lines.reduce((sum, l) => sum + l.lineTotal, 0));
-  const deliveryCharge = money(input.deliveryCharge ?? 0);
-  const discountAmount = Math.min(money(input.discountAmount ?? 0), subtotal);
-  const totalAmount = money(subtotal + deliveryCharge - discountAmount);
+  const subtotalDec = sumDecimals(lines.map((l) => l.lineTotal));
+  const deliveryChargeDec = toDecimal(round2(input.deliveryCharge ?? 0));
+  const discountAmountDec = toDecimal(
+    Math.min(round2(input.discountAmount ?? 0), round2(subtotalDec)),
+  );
+  const totalAmountDec = subtotalDec
+    .plus(deliveryChargeDec)
+    .minus(discountAmountDec);
+
+  const subtotal = round2(subtotalDec);
+  const deliveryCharge = round2(deliveryChargeDec);
+  const discountAmount = round2(discountAmountDec);
+  const totalAmount = round2(totalAmountDec);
 
   const orderNumber = generateOrderNumber();
 
@@ -202,10 +302,9 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
   try {
     return await prisma.$transaction(async (tx) => {
       for (const line of lines) {
-        const result = await tx.product.updateMany({
+        const result = await tx.productVariant.updateMany({
           where: {
-            id: line.productId,
-            status: "ACTIVE",
+            id: line.variantId,
             stock: { gte: line.quantity },
           },
           data: { stock: { decrement: line.quantity } },
@@ -217,6 +316,15 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
             { productId: line.productId },
           );
         }
+
+        await tx.inventoryLog.create({
+          data: {
+            variantId: line.variantId,
+            type: "ORDER_PLACED",
+            quantity: -line.quantity,
+            note: `Order ${orderNumber}`,
+          },
+        });
       }
 
       const order = await tx.order.create({
@@ -234,8 +342,15 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
           items: {
             create: lines.map((l) => ({
               productId: l.productId,
+              variantId: l.variantId,
+              productName: l.name,
+              productImage: l.image,
+              sku: l.sku,
+              color: l.color,
+              size: l.size,
               quantity: l.quantity,
-              price: l.unitPrice,
+              unitPrice: round2(l.unitPrice),
+              totalPrice: round2(l.lineTotal),
             })),
           },
         },
@@ -246,7 +361,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
         await tx.cartItem.deleteMany({ where: { userId } });
       }
 
-      return order;
+      return serializeOrder(order);
     });
   } catch (error) {
     // P2002 on `orderNumber` is a one-in-a-trillion collision; retry once.
@@ -286,7 +401,7 @@ export async function listMyOrders(userId: string, query: OrderQueryInput) {
   ]);
 
   return {
-    items,
+    items: items.map(serializeOrder),
     meta: {
       page: query.page,
       pageSize: query.pageSize,
@@ -302,10 +417,12 @@ export async function listMyOrders(userId: string, query: OrderQueryInput) {
  * returns `null` (route maps it to 404) without leaking existence.
  */
 export function getOrderForUser(orderId: string, userId: string) {
-  return prisma.order.findFirst({
-    where: { id: orderId, userId },
-    include: orderInclude,
-  });
+  return prisma.order
+    .findFirst({
+      where: { id: orderId, userId },
+      include: orderInclude,
+    })
+    .then(serializeOrderOrNull);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -313,6 +430,54 @@ export function getOrderForUser(orderId: string, userId: string) {
 /* -------------------------------------------------------------------------- */
 
 const CUSTOMER_CANCELLABLE: readonly OrderStatus[] = ["PENDING", "PROCESSING"];
+
+/**
+ * Restore stock for an order's items onto their variants.
+ *
+ * Order items keep a `variantId` snapshot. We restore onto that variant
+ * when it still exists (SET NULL on delete means it may be gone). A SKU
+ * fallback covers any legacy rows that predate the variantId snapshot.
+ * Each restore is recorded in the inventory ledger.
+ */
+async function restoreStockForItems(
+  tx: Prisma.TransactionClient,
+  items: { variantId: string | null; sku: string | null; quantity: number }[],
+  orderNumber: string,
+) {
+  for (const item of items) {
+    let variantId = item.variantId ?? null;
+
+    if (!variantId && item.sku) {
+      const variant = await tx.productVariant.findUnique({
+        where: { sku: item.sku },
+        select: { id: true },
+      });
+      variantId = variant?.id ?? null;
+    }
+
+    if (!variantId) continue;
+
+    // Guard against a variant that was deleted after the order was placed.
+    const exists = await tx.productVariant.findUnique({
+      where: { id: variantId },
+      select: { id: true },
+    });
+    if (!exists) continue;
+
+    await tx.productVariant.update({
+      where: { id: variantId },
+      data: { stock: { increment: item.quantity } },
+    });
+    await tx.inventoryLog.create({
+      data: {
+        variantId,
+        type: "ORDER_CANCELLED",
+        quantity: item.quantity,
+        note: `Order ${orderNumber} cancelled`,
+      },
+    });
+  }
+}
 
 export async function cancelOrderAsCustomer(orderId: string, userId: string) {
   return prisma.$transaction(async (tx) => {
@@ -329,19 +494,15 @@ export async function cancelOrderAsCustomer(orderId: string, userId: string) {
       );
     }
 
-    // Restore stock for every line.
-    for (const item of order.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
-      });
-    }
+    // Restore stock for every line onto its variant.
+    await restoreStockForItems(tx, order.items, order.orderNumber);
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: order.id },
       data: { status: "CANCELLED" },
       include: orderInclude,
     });
+    return serializeOrder(updated);
   });
 }
 
@@ -398,10 +559,17 @@ export async function listOrdersForAdmin(query: AdminOrderQueryInput) {
     prisma.order.count({ where }),
   ]);
 
-  // Flatten `_count.items` so the API stays simple to consume.
+  // Flatten `_count.items` and convert Decimal money fields to numbers.
   const items = rows.map((row) => {
     const { _count, ...rest } = row;
-    return { ...rest, itemsCount: _count.items };
+    return {
+      ...rest,
+      subtotal: toNumber(rest.subtotal),
+      deliveryCharge: toNumber(rest.deliveryCharge),
+      discountAmount: toNumber(rest.discountAmount),
+      totalAmount: toNumber(rest.totalAmount),
+      itemsCount: _count.items,
+    };
   });
 
   return {
@@ -432,10 +600,12 @@ export function listOrdersForAdminCached(query: AdminOrderQueryInput) {
 }
 
 export function getOrderForAdmin(orderId: string) {
-  return prisma.order.findUnique({
-    where: { id: orderId },
-    include: orderWithUserInclude,
-  });
+  return prisma.order
+    .findUnique({
+      where: { id: orderId },
+      include: orderWithUserInclude,
+    })
+    .then((order) => (order == null ? null : serializeOrder(order)));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -482,19 +652,15 @@ export async function updateOrderStatus(
 
     // Restore stock when an order moves into CANCELLED from a live state.
     if (next === "CANCELLED") {
-      for (const item of order.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
-      }
+      await restoreStockForItems(tx, order.items, order.orderNumber);
     }
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: order.id },
       data: { status: next },
       include: orderWithUserInclude,
     });
+    return serializeOrder(updated);
   });
 }
 
@@ -512,11 +678,12 @@ export async function updatePaymentStatus(
     throw new OrderError(409, `Payment is already ${input.paymentStatus}.`);
   }
 
-  return prisma.order.update({
+  const updated = await prisma.order.update({
     where: { id: orderId },
     data: { paymentStatus: input.paymentStatus },
     include: orderWithUserInclude,
   });
+  return serializeOrder(updated);
 }
 
 // `orderItemProductSelect` is exported only for tests / future use.

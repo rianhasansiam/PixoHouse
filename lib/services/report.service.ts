@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { round2, toNumber } from "@/lib/money";
 import { ServiceError } from "@/lib/services/service-error";
 import type { ReportQueryInput } from "@/lib/validations/report.validation";
 
@@ -29,9 +30,9 @@ export class ReportError extends ServiceError {
 /*  Shared helpers                                                            */
 /* -------------------------------------------------------------------------- */
 
-/** Round currency to 2 dp; use everywhere in this module. */
-function money(value: number): number {
-  return Math.round(value * 100) / 100;
+/** Round currency to 2 dp; accepts Decimal or number. Use everywhere here. */
+function money(value: Parameters<typeof toNumber>[0]): number {
+  return round2(value);
 }
 
 /**
@@ -159,7 +160,7 @@ async function buildSalesReport(window: Window, limit: number) {
     const key = new Date(order.createdAt).toISOString().slice(0, 10);
     const bucket = dailyMap.get(key);
     if (!bucket) continue;
-    bucket.revenue = money(bucket.revenue + order.totalAmount);
+    bucket.revenue = money(bucket.revenue + toNumber(order.totalAmount));
     bucket.orders += 1;
   }
 
@@ -287,12 +288,13 @@ async function buildProductsReport(window: Window, limit: number) {
   const orderItems = await prisma.orderItem.groupBy({
     by: ["productId"],
     where: {
+      productId: { not: null },
       order: {
         createdAt: { gte: window.from, lte: window.to },
         status: { not: "CANCELLED" },
       },
     },
-    _sum: { quantity: true, price: true },
+    _sum: { quantity: true },
     _count: { _all: true },
   });
 
@@ -303,10 +305,12 @@ async function buildProductsReport(window: Window, limit: number) {
     };
   }
 
-  // Compute revenue per product (price * quantity per row would be ideal,
-  // but `groupBy` can't multiply — so we re-aggregate from raw rows for
-  // the products we actually care about).
-  const productIds = orderItems.map((row) => row.productId);
+  // Compute revenue per product from each line's price snapshot
+  // (totalPrice), so revenue is correct even if the live product or
+  // its variant price changed later.
+  const productIds = orderItems
+    .map((row) => row.productId)
+    .filter((id): id is string => id !== null);
 
   const detailedRows = await prisma.orderItem.findMany({
     where: {
@@ -319,15 +323,16 @@ async function buildProductsReport(window: Window, limit: number) {
     select: {
       productId: true,
       quantity: true,
-      price: true,
+      totalPrice: true,
     },
   });
 
   const productMap = new Map<string, { units: number; revenue: number }>();
   for (const row of detailedRows) {
+    if (row.productId == null) continue;
     const bucket = productMap.get(row.productId) ?? { units: 0, revenue: 0 };
     bucket.units += row.quantity;
-    bucket.revenue += row.price * row.quantity;
+    bucket.revenue = round2(bucket.revenue + toNumber(row.totalPrice));
     productMap.set(row.productId, bucket);
   }
 
@@ -336,10 +341,13 @@ async function buildProductsReport(window: Window, limit: number) {
     select: {
       id: true,
       name: true,
-      price: true,
-      stock: true,
       status: true,
       category: { select: { id: true, name: true } },
+      variants: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { price: true, salePrice: true, stock: true },
+      },
     },
   });
   const productInfo = new Map(products.map((p) => [p.id, p]));
@@ -347,14 +355,15 @@ async function buildProductsReport(window: Window, limit: number) {
   const rows = Array.from(productMap.entries())
     .map(([productId, agg]) => {
       const info = productInfo.get(productId);
+      const variant = info?.variants[0];
       return {
         productId,
         name: info?.name ?? "Deleted product",
         category: info?.category?.name ?? "—",
         unitsSold: agg.units,
         revenue: money(agg.revenue),
-        currentPrice: info ? money(info.price) : null,
-        currentStock: info?.stock ?? null,
+        currentPrice: variant ? money(variant.price) : null,
+        currentStock: variant?.stock ?? null,
         status: info?.status ?? null,
       };
     })
@@ -384,58 +393,84 @@ async function buildProductsReport(window: Window, limit: number) {
  * always reported "as of now".
  */
 async function buildInventoryReport(limit: number) {
-  const [products, totals, outOfStock, lowStock] = await Promise.all([
-    prisma.product.findMany({
-      orderBy: [{ stock: "asc" }, { name: "asc" }],
-      take: limit,
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        discountPrice: true,
-        stock: true,
-        status: true,
-        category: { select: { id: true, name: true } },
-        updatedAt: true,
+  // Stock and price now live on ProductVariant. We load products with
+  // their variants and aggregate per product.
+  const products = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      category: { select: { id: true, name: true } },
+      updatedAt: true,
+      variants: {
+        select: { price: true, salePrice: true, stock: true },
       },
-    }),
-    prisma.product.aggregate({
-      _count: { _all: true },
-      _sum: { stock: true },
-    }),
-    prisma.product.count({ where: { stock: 0 } }),
-    prisma.product.count({ where: { stock: { gt: 0, lte: 5 } } }),
-  ]);
-
-  // Inventory value = sum(stock * price) at current price.
-  const allForValue = await prisma.product.findMany({
-    select: { stock: true, price: true, discountPrice: true },
+    },
   });
-  const inventoryValue = allForValue.reduce((sum, p) => {
-    const unit = p.discountPrice != null && p.discountPrice < p.price
-      ? p.discountPrice
-      : p.price;
-    return sum + unit * p.stock;
-  }, 0);
+
+  type Row = {
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    discountPrice: number | null;
+    stock: number;
+    status: (typeof products)[number]["status"];
+    updatedAt: string;
+  };
+
+  let totalUnits = 0;
+  let outOfStock = 0;
+  let lowStock = 0;
+  let inventoryValue = 0;
+
+  const allRows: Row[] = products.map((p) => {
+    // Aggregate stock across variants; use the primary variant for the
+    // representative price columns.
+    const stock = p.variants.reduce((sum, v) => sum + v.stock, 0);
+    const primary = p.variants[0];
+    const price = primary ? toNumber(primary.price) : 0;
+    const sale =
+      primary && primary.salePrice != null ? toNumber(primary.salePrice) : null;
+    const discountPrice = sale != null && sale < price ? sale : null;
+
+    totalUnits += stock;
+    if (stock === 0) outOfStock += 1;
+    else if (stock <= 5) lowStock += 1;
+
+    // Inventory value uses each variant's effective price * its stock.
+    for (const v of p.variants) {
+      const vPrice = toNumber(v.price);
+      const vSale = v.salePrice != null ? toNumber(v.salePrice) : null;
+      const unit = vSale != null && vSale < vPrice ? vSale : vPrice;
+      inventoryValue += unit * v.stock;
+    }
+
+    return {
+      id: p.id,
+      name: p.name,
+      category: p.category?.name ?? "—",
+      price: money(price),
+      discountPrice: discountPrice != null ? money(discountPrice) : null,
+      stock,
+      status: p.status,
+      updatedAt: p.updatedAt.toISOString(),
+    };
+  });
+
+  const rows = allRows
+    .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name))
+    .slice(0, limit);
 
   return {
     summary: {
-      totalProducts: totals._count._all,
-      totalUnitsInStock: totals._sum.stock ?? 0,
+      totalProducts: products.length,
+      totalUnitsInStock: totalUnits,
       outOfStock,
       lowStock,
       inventoryValue: money(inventoryValue),
     },
-    rows: products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      category: p.category?.name ?? "—",
-      price: money(p.price),
-      discountPrice: p.discountPrice != null ? money(p.discountPrice) : null,
-      stock: p.stock,
-      status: p.status,
-      updatedAt: p.updatedAt.toISOString(),
-    })),
+    rows,
   };
 }
 
@@ -508,7 +543,7 @@ async function buildCustomersReport(window: Window, limit: number) {
     .slice(0, limit);
 
   const totalRevenue = money(
-    orderAggregates.reduce((sum, row) => sum + (row._sum.totalAmount ?? 0), 0),
+    orderAggregates.reduce((sum, row) => sum + toNumber(row._sum.totalAmount), 0),
   );
 
   return {
@@ -556,17 +591,19 @@ async function buildCategoriesReport(window: Window, limit: number) {
     },
     select: {
       quantity: true,
-      price: true,
+      totalPrice: true,
       product: { select: { categoryId: true } },
     },
   });
 
   const aggregate = new Map<string, { units: number; revenue: number }>();
   for (const item of items) {
+    // Skip items whose product was deleted — no category to attribute to.
+    if (!item.product) continue;
     const key = item.product.categoryId;
     const bucket = aggregate.get(key) ?? { units: 0, revenue: 0 };
     bucket.units += item.quantity;
-    bucket.revenue += item.price * item.quantity;
+    bucket.revenue = round2(bucket.revenue + toNumber(item.totalPrice));
     aggregate.set(key, bucket);
   }
 

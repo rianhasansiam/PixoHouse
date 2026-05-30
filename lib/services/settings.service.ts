@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { toNumber } from "@/lib/money";
 import { ServiceError } from "@/lib/services/service-error";
 import type {
   CreatePromoCodeInput,
@@ -64,12 +65,92 @@ const promoSelect = {
   updatedAt: true,
 } satisfies Prisma.PromoCodeSelect;
 
-export type StoreSettingsRow = Prisma.StoreSettingsGetPayload<{
-  select: typeof settingsSelect;
-}>;
-export type PromoCodeRow = Prisma.PromoCodeGetPayload<{
-  select: typeof promoSelect;
-}>;
+export type StoreSettingsRow = {
+  id: string;
+  taxRate: number;
+  standardShippingFee: number;
+  expressShippingFee: number;
+  freeShippingThreshold: number;
+  currency: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+export type PromoCodeRow = {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: Prisma.PromoCodeGetPayload<{
+    select: { discountType: true };
+  }>["discountType"];
+  value: number;
+  minOrder: number | null;
+  maxDiscount: number | null;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  usageLimit: number | null;
+  usedCount: number;
+  status: Prisma.PromoCodeGetPayload<{ select: { status: true } }>["status"];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Convert a raw settings row (Decimal money fields) into a number-shaped row. */
+function serializeSettings(row: {
+  id: string;
+  taxRate: Prisma.Decimal;
+  standardShippingFee: Prisma.Decimal;
+  expressShippingFee: Prisma.Decimal;
+  freeShippingThreshold: Prisma.Decimal;
+  currency: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): StoreSettingsRow {
+  return {
+    id: row.id,
+    taxRate: toNumber(row.taxRate),
+    standardShippingFee: toNumber(row.standardShippingFee),
+    expressShippingFee: toNumber(row.expressShippingFee),
+    freeShippingThreshold: toNumber(row.freeShippingThreshold),
+    currency: row.currency,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/** Convert a raw promo row (Decimal money fields) into a number-shaped row. */
+function serializePromo(row: {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: PromoCodeRow["discountType"];
+  value: Prisma.Decimal;
+  minOrder: Prisma.Decimal | null;
+  maxDiscount: Prisma.Decimal | null;
+  startsAt: Date | null;
+  endsAt: Date | null;
+  usageLimit: number | null;
+  usedCount: number;
+  status: PromoCodeRow["status"];
+  createdAt: Date;
+  updatedAt: Date;
+}): PromoCodeRow {
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description,
+    discountType: row.discountType,
+    value: toNumber(row.value),
+    minOrder: row.minOrder == null ? null : toNumber(row.minOrder),
+    maxDiscount: row.maxDiscount == null ? null : toNumber(row.maxDiscount),
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    usageLimit: row.usageLimit,
+    usedCount: row.usedCount,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Store settings                                                            */
@@ -87,12 +168,13 @@ export async function getStoreSettings(): Promise<StoreSettingsRow> {
     orderBy: { createdAt: "asc" },
     select: settingsSelect,
   });
-  if (existing) return existing;
+  if (existing) return serializeSettings(existing);
 
-  return prisma.storeSettings.create({
+  const created = await prisma.storeSettings.create({
     data: {},
     select: settingsSelect,
   });
+  return serializeSettings(created);
 }
 
 /**
@@ -130,7 +212,7 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
     where: { id: current.id },
     data,
     select: settingsSelect,
-  });
+  }).then(serializeSettings);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -149,10 +231,11 @@ function normalizeDate(value: string | null | undefined): Date | null {
 }
 
 export async function listPromoCodes(): Promise<PromoCodeRow[]> {
-  return prisma.promoCode.findMany({
+  const rows = await prisma.promoCode.findMany({
     orderBy: { createdAt: "desc" },
     select: promoSelect,
   });
+  return rows.map(serializePromo);
 }
 
 const getCachedPromoCodes = unstable_cache(
@@ -177,7 +260,7 @@ export async function findActivePromoCode(
   if (!code) return null;
 
   const now = new Date();
-  return prisma.promoCode.findFirst({
+  const row = await prisma.promoCode.findFirst({
     where: {
       code,
       status: "ACTIVE",
@@ -188,6 +271,7 @@ export async function findActivePromoCode(
     },
     select: promoSelect,
   });
+  return row == null ? null : serializePromo(row);
 }
 
 export async function createPromoCode(input: CreatePromoCodeInput) {
@@ -205,10 +289,11 @@ export async function createPromoCode(input: CreatePromoCodeInput) {
   };
 
   try {
-    return await prisma.promoCode.create({
+    const row = await prisma.promoCode.create({
       data,
       select: promoSelect,
     });
+    return serializePromo(row);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -247,11 +332,12 @@ export async function updatePromoCode(
   if (input.status !== undefined) data.status = input.status;
 
   try {
-    return await prisma.promoCode.update({
+    const row = await prisma.promoCode.update({
       where: { id },
       data,
       select: promoSelect,
     });
+    return serializePromo(row);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
@@ -270,10 +356,11 @@ export async function updatePromoCode(
 
 export async function deletePromoCode(id: string) {
   try {
-    return await prisma.promoCode.delete({
+    const row = await prisma.promoCode.delete({
       where: { id },
       select: promoSelect,
     });
+    return serializePromo(row);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

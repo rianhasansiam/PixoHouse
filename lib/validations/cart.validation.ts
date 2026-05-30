@@ -12,6 +12,8 @@ import { z } from "zod";
 
 const productId = z.string().trim().min(1, "Product is required.");
 
+const variantId = z.string().trim().min(1, "Variant is required.");
+
 const quantity = z
   .number({ error: "Quantity must be a number." })
   .int("Quantity must be a whole number.")
@@ -21,11 +23,15 @@ const quantity = z
 /** Body for `POST /api/cart`. */
 export const addToCartSchema = z.object({
   productId,
+  // Optional: when omitted the service falls back to the product's
+  // primary (first) variant so existing single-variant flows keep working.
+  variantId: variantId.optional(),
   quantity: quantity.default(1),
 });
 
 const syncCartItemSchema = z.object({
   productId,
+  variantId: variantId.optional(),
   quantity,
 });
 

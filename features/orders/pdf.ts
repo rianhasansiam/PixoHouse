@@ -129,10 +129,10 @@ function drawItemsTable(doc: Doc, startY: number, order: OrderDetail): number {
     startY: startY + 3,
     head: [["Product", "Qty", "Unit", "Line total"]],
     body: order.items.map((item) => [
-      item.product.name,
+      item.productName,
       String(item.quantity),
-      formatBdt(item.price),
-      formatBdt(item.price * item.quantity),
+      formatBdt(item.unitPrice),
+      formatBdt(item.totalPrice),
     ]),
     theme: "striped",
     headStyles: {

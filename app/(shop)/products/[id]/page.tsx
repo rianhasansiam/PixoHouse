@@ -27,14 +27,22 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
-/** Resolve effective price (discount when valid). */
+/** Resolve effective price (sale price when valid) from the primary variant. */
 function effectivePrice(product: {
-  price: number;
-  discountPrice: number | null;
+  variants: { price: { toNumber(): number }; salePrice: { toNumber(): number } | null }[];
 }) {
-  return product.discountPrice != null && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+  const variant = product.variants[0];
+  if (!variant) return 0;
+  const price = variant.price.toNumber();
+  const sale = variant.salePrice?.toNumber() ?? null;
+  return sale != null && sale < price ? sale : price;
+}
+
+/** List price (before discount) from the primary variant. */
+function listPrice(product: {
+  variants: { price: { toNumber(): number } }[];
+}) {
+  return product.variants[0]?.price.toNumber() ?? 0;
 }
 
 function discountPercent(price: number, originalPrice: number) {
@@ -54,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const description = (product.description ?? product.name).slice(0, 160);
-  const ogImages = [product.image ?? FALLBACK_PRODUCT_IMAGE];
+  const ogImages = [product.images[0]?.url ?? FALLBACK_PRODUCT_IMAGE];
 
   return {
     title: `${product.name} | EnterFly - Local Marketplace`,
@@ -76,7 +84,7 @@ export default async function ProductDetailsPage({ params }: Props) {
   if (!product) notFound();
 
   const price = effectivePrice(product);
-  const originalPrice = product.price;
+  const originalPrice = listPrice(product);
   const discount = discountPercent(price, originalPrice);
 
   // Pull a generous batch from the same category so we can split it into
@@ -99,13 +107,14 @@ export default async function ProductDetailsPage({ params }: Props) {
 
   const toCard = (row: (typeof others)[number]) => {
     const cardPrice = effectivePrice(row);
+    const cardOriginal = listPrice(row);
     return {
       id: row.id,
       name: row.name,
-      image: row.image ?? FALLBACK_PRODUCT_IMAGE,
+      image: row.images[0]?.url ?? FALLBACK_PRODUCT_IMAGE,
       price: cardPrice,
-      originalPrice: row.price,
-      discount: discountPercent(cardPrice, row.price),
+      originalPrice: cardOriginal,
+      discount: discountPercent(cardPrice, cardOriginal),
     };
   };
 
@@ -114,8 +123,8 @@ export default async function ProductDetailsPage({ params }: Props) {
 
   const galleryImages =
     product.images.length > 0
-      ? product.images
-      : [product.image ?? FALLBACK_PRODUCT_IMAGE];
+      ? product.images.map((img) => img.url)
+      : [FALLBACK_PRODUCT_IMAGE];
 
   const breadcrumbItems = [
     {
@@ -152,8 +161,11 @@ export default async function ProductDetailsPage({ params }: Props) {
                 productId={product.id}
                 productName={product.name}
                 price={price}
-                inStock={product.status === "ACTIVE" && product.stock > 0}
-                stockCount={product.stock}
+                inStock={
+                  product.status === "ACTIVE" &&
+                  (product.variants[0]?.stock ?? 0) > 0
+                }
+                stockCount={product.variants[0]?.stock ?? 0}
               />
             </div>
           </div>

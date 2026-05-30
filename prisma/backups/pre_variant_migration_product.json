@@ -1,0 +1,22 @@
+[
+  {"id":"cmpmc7dyw00098oc2mr9257sx","name":"Wireless Earbuds Pro","price":3900,"discountPrice":3299,"stock":31,"image":"https://images.unsplash.com/photo-1590658268037-6bf12165a8df","badge":"Bestseller","rating":4.7,"reviewCount":138},
+  {"id":"cmpmc7dyw00068oc2hjd3x6eu","name":"Mechanical Keyboard","price":4200,"discountPrice":3799,"stock":20,"badge":"Bestseller","rating":4.8,"reviewCount":110},
+  {"id":"cmpmc7dyw00078oc205bwb0gb","name":"Portable Bluetooth Speaker","price":2600,"discountPrice":2199,"stock":28,"badge":"Trending","rating":4.5,"reviewCount":95},
+  {"id":"cmpmc7dyw00088oc2t2bz3x2d","name":"USB-C Fast Charger","price":1200,"discountPrice":999,"stock":80,"badge":"New","rating":4.3,"reviewCount":48},
+  {"id":"cmpmc7dyw000a8oc2odwwaheh","name":"Men Denim Jacket","price":3200,"discountPrice":2799,"stock":15,"badge":"Trending","rating":4.4,"reviewCount":39},
+  {"id":"cmpmc7dyw000b8oc2jfss3tm3","name":"Women Summer Dress","price":2500,"discountPrice":2199,"stock":24,"badge":"New","rating":4.5,"reviewCount":57},
+  {"id":"cmpmc7dyw000c8oc277u3tjb3","name":"Classic Leather Wallet","price":1300,"discountPrice":1099,"stock":45,"badge":"Popular","rating":4.2,"reviewCount":42},
+  {"id":"cmpmc7dyw000d8oc23ek3283l","name":"Running Sneakers","price":4200,"discountPrice":3699,"stock":18,"badge":"Hot Deal","rating":4.7,"reviewCount":101},
+  {"id":"cmpmc7dyw000f8oc2w7cj4tyc","name":"Power Bank 20000mAh","price":3100,"discountPrice":2699,"stock":36,"badge":"Essential","rating":4.4,"reviewCount":83},
+  {"id":"cmpmc7dyw000g8oc2h2cgysoe","name":"Sunglasses Classic Black","price":1600,"discountPrice":1299,"stock":40,"badge":"Trending","rating":4.3,"reviewCount":52},
+  {"id":"cmpmc7dyw000h8oc2taq698m0","name":"Fresh Orange 1kg","price":360,"discountPrice":320,"stock":85,"badge":"Fresh","rating":4.5,"reviewCount":61},
+  {"id":"cmpmc7dyw000i8oc2qapyiiae","name":"Cotton Polo Shirt","price":1500,"discountPrice":1199,"stock":55,"badge":"Fresh Stock","rating":4.3,"reviewCount":66},
+  {"id":"cmpmc7dyw000j8oc2s09k2otd","name":"Organic Honey 500g","price":650,"discountPrice":599,"stock":50,"badge":"Organic","rating":4.7,"reviewCount":58},
+  {"id":"cmpmc7dyw000k8oc2m5699tic","name":"Fresh Banana 1 Dozen","price":180,"discountPrice":150,"stock":120,"badge":"Fresh","rating":4.4,"reviewCount":44},
+  {"id":"cmpmc7dyw000l8oc2tonwkx5j","name":"Fresh Tomato 1kg","price":140,"discountPrice":120,"stock":90,"badge":"Daily Deal","rating":4.1,"reviewCount":28},
+  {"id":"cmpmc7dyw00058oc2yugr17y9","name":"Gaming Mouse RGB","price":1800,"discountPrice":1499,"stock":35,"badge":"Hot Deal","rating":4.6,"reviewCount":72},
+  {"id":"cmpmc7dyw000e8oc2mwp0pnfh","name":"Laptop Backpack","price":2400,"discountPrice":1999,"stock":21,"badge":"Popular","rating":4.5,"reviewCount":69},
+  {"id":"cmpmc7dyw000m8oc2u555cxez","name":"Olive Oil 1L","price":1350,"discountPrice":1199,"stock":30,"badge":"Premium","rating":4.6,"reviewCount":76},
+  {"id":"cmpmc7dyw000n8oc2j527q9ph","name":"Brown Bread","price":120,"discountPrice":99,"stock":70,"badge":"Fresh","rating":4.2,"reviewCount":31},
+  {"id":"cmpmc7dyw000o8oc2fryemdf7","name":"Smart LED Bulb","price":900,"discountPrice":749,"stock":65,"badge":"Smart Home","rating":4.1,"reviewCount":37}
+]

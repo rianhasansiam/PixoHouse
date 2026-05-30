@@ -22,14 +22,22 @@ export type OrderPaymentMethod = "CASH_ON_DELIVERY" | "ONLINE";
 
 export type OrderItem = {
   id: string;
-  productId: string;
+  productId: string | null;
+  variantId: string | null;
+  productName: string;
+  productImage: string | null;
+  sku: string | null;
+  color: string | null;
+  size: string | null;
   quantity: number;
-  price: number;
+  unitPrice: number;
+  totalPrice: number;
+  // Live product link for navigation; null if the product was deleted.
   product: {
     id: string;
     name: string;
-    image: string | null;
-  };
+    slug: string;
+  } | null;
 };
 
 export type OrderDetail = {
@@ -98,12 +106,20 @@ export type MyOrderSummary = {
   items: Array<{
     id: string;
     quantity: number;
-    price: number;
+    unitPrice: number;
+    totalPrice: number;
+    productId: string | null;
+    variantId: string | null;
+    productName: string;
+    productImage: string | null;
+    sku: string | null;
+    color: string | null;
+    size: string | null;
     product: {
       id: string;
       name: string;
-      image: string | null;
-    };
+      slug: string;
+    } | null;
   }>;
 };
 

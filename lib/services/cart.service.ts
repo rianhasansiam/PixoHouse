@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
+import { multiply, round2, subtractClamped, sumDecimals, toDecimal } from "@/lib/money";
 import { ServiceError } from "@/lib/services/service-error";
 import type {
   AddToCartInput,
@@ -16,8 +17,10 @@ import type {
  *
  * Route handlers stay thin. Domain rules live here:
  *   - prices are always read from the DB (never trusted from the client)
- *   - inactive products and out-of-stock products are rejected
- *   - quantity can never exceed the product's current stock
+ *   - each cart row stores the exact selected ProductVariant, so a
+ *     customer who adds "Black / Large" gets that precise item
+ *   - inactive products and out-of-stock variants are rejected
+ *   - quantity can never exceed the chosen variant's current stock
  *   - all writes are scoped by `userId` in the WHERE clause so a user
  *     can never touch another user's cart row (IDOR-safe by SQL).
  */
@@ -45,18 +48,31 @@ export class CartError extends ServiceError {
 const cartItemProductSelect = {
   id: true,
   name: true,
-  image: true,
-  price: true,
-  discountPrice: true,
-  stock: true,
   status: true,
-} as const;
+  images: {
+    orderBy: { position: "asc" },
+    take: 1,
+    select: { url: true },
+  },
+} satisfies Prisma.ProductSelect;
+
+/** The exact selected variant carries price + stock for the line. */
+const cartItemVariantSelect = {
+  id: true,
+  sku: true,
+  color: true,
+  size: true,
+  price: true,
+  salePrice: true,
+  stock: true,
+} satisfies Prisma.ProductVariantSelect;
 
 const cartItemInclude = {
   product: { select: cartItemProductSelect },
+  variant: { select: cartItemVariantSelect },
 } satisfies Prisma.CartItemInclude;
 
-type CartItemWithProduct = Prisma.CartItemGetPayload<{
+type CartItemWithRelations = Prisma.CartItemGetPayload<{
   include: typeof cartItemInclude;
 }>;
 
@@ -64,25 +80,28 @@ type CartItemWithProduct = Prisma.CartItemGetPayload<{
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Pick the unit price the customer should pay (discount when valid). */
-function effectivePrice(product: {
-  price: number;
-  discountPrice: number | null;
-}) {
-  return product.discountPrice != null && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
-}
-
-/** Round currency to 2 dp to keep totals free of float noise. */
-function money(value: number): number {
-  return Math.round(value * 100) / 100;
+/** Pick the unit price the customer should pay (sale price when valid). */
+function effectiveVariantPrice(variant: {
+  price: Prisma.Decimal;
+  salePrice: Prisma.Decimal | null;
+}): Prisma.Decimal {
+  if (
+    variant.salePrice != null &&
+    toDecimal(variant.salePrice).lessThan(toDecimal(variant.price))
+  ) {
+    return toDecimal(variant.salePrice);
+  }
+  return toDecimal(variant.price);
 }
 
 /** Shape returned to the client for one cart row. */
 type CartLine = {
   id: string;
   productId: string;
+  variantId: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
   name: string;
   image: string | null;
   quantity: number;
@@ -105,49 +124,62 @@ type CartSummary = {
  * count toward the totals (inactive products are surfaced but ignored
  * in the summary so the UI can warn the user).
  */
-function toLine(row: CartItemWithProduct): {
+function toLine(row: CartItemWithRelations): {
   line: CartLine;
   countable: boolean;
 } {
   const p = row.product;
-  const unitPrice = effectivePrice(p);
+  const variant = row.variant;
+  const listPrice = toDecimal(variant.price);
+  const unitPrice = effectiveVariantPrice(variant);
+  const stock = variant.stock;
   const line: CartLine = {
     id: row.id,
     productId: p.id,
+    variantId: variant.id,
+    sku: variant.sku,
+    color: variant.color,
+    size: variant.size,
     name: p.name,
-    image: p.image,
+    image: p.images[0]?.url ?? null,
     quantity: row.quantity,
-    unitPrice: money(unitPrice),
-    originalPrice: money(p.price),
-    lineTotal: money(unitPrice * row.quantity),
-    stock: p.stock,
+    unitPrice: round2(unitPrice),
+    originalPrice: round2(listPrice),
+    lineTotal: round2(multiply(unitPrice, row.quantity)),
+    stock,
     status: p.status,
   };
   return { line, countable: p.status === "ACTIVE" };
 }
 
-function summarize(rows: CartItemWithProduct[]): {
+function summarize(rows: CartItemWithRelations[]): {
   items: CartLine[];
   summary: CartSummary;
 } {
   let totalItems = 0;
-  let subtotal = 0;
-  let totalDiscount = 0;
   const items: CartLine[] = [];
+  const countableLines: CartLine[] = [];
 
   for (const row of rows) {
     const { line, countable } = toLine(row);
     items.push(line);
     if (!countable) continue;
+    countableLines.push(line);
     totalItems += line.quantity;
-    subtotal += line.lineTotal;
-    totalDiscount += money(
-      (line.originalPrice - line.unitPrice) * line.quantity,
-    );
   }
 
-  subtotal = money(subtotal);
-  totalDiscount = money(totalDiscount);
+  const subtotal = round2(sumDecimals(countableLines.map((l) => l.lineTotal)));
+  const totalDiscount = round2(
+    sumDecimals(
+      countableLines.map((l) =>
+        subtractClamped(
+          multiply(l.originalPrice, l.quantity),
+          multiply(l.unitPrice, l.quantity),
+        ),
+      ),
+    ),
+  );
+
   return {
     items,
     summary: {
@@ -159,16 +191,52 @@ function summarize(rows: CartItemWithProduct[]): {
   };
 }
 
+/**
+ * Resolve the variant a cart write should target. When the caller
+ * passes a `variantId` we validate it belongs to the product; when it
+ * is omitted we fall back to the product's primary (oldest) variant so
+ * single-variant products keep working without client changes.
+ */
+async function resolveVariant(
+  productId: string,
+  variantId: string | undefined,
+) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      variants: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, stock: true },
+      },
+    },
+  });
+  if (!product) throw new CartError(404, "Product not found.");
+  if (product.status !== "ACTIVE") {
+    throw new CartError(409, `"${product.name}" is no longer available.`);
+  }
+
+  const variant = variantId
+    ? product.variants.find((v) => v.id === variantId)
+    : product.variants[0];
+
+  if (!variant) {
+    throw new CartError(
+      variantId ? 404 : 409,
+      variantId
+        ? "Selected variant was not found for this product."
+        : `"${product.name}" has no purchasable variant.`,
+    );
+  }
+  return { product, variant };
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Reads                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Return the current user's cart with a server-computed summary.
- *
- * Inactive products are returned for visibility but excluded from the
- * totals so the client can render a "no longer available" state.
- */
 export async function getMyCart(userId: string) {
   const rows = await prisma.cartItem.findMany({
     where: { userId },
@@ -194,62 +262,68 @@ export async function syncCartItems(userId: string, input: SyncCartInput) {
     return getMyCart(userId);
   }
 
-  const merged = new Map<string, number>();
+  // Resolve every line to a concrete variant, merging duplicates by
+  // the variant that will actually be stored.
+  const merged = new Map<
+    string,
+    { productId: string; variantId: string; quantity: number }
+  >();
+
   for (const item of input.items) {
-    const current = merged.get(item.productId) ?? 0;
-    merged.set(item.productId, current + item.quantity);
+    let resolved;
+    try {
+      resolved = await resolveVariant(item.productId, item.variantId);
+    } catch {
+      // Skip lines that no longer resolve (inactive/deleted product).
+      continue;
+    }
+    const variantId = resolved.variant.id;
+    const existing = merged.get(variantId);
+    merged.set(variantId, {
+      productId: resolved.product.id,
+      variantId,
+      quantity: (existing?.quantity ?? 0) + item.quantity,
+    });
   }
 
-  const requested = Array.from(merged.entries()).map(([productId, quantity]) => ({
-    productId,
-    quantity,
-  }));
+  const requested = Array.from(merged.values());
+  if (requested.length === 0) {
+    return getMyCart(userId);
+  }
 
-  const productIds = requested.map((item) => item.productId);
-  const products = await prisma.product.findMany({
-    where: {
-      id: { in: productIds },
-      status: "ACTIVE",
-    },
-    select: {
-      id: true,
-      stock: true,
-    },
+  const variantIds = requested.map((item) => item.variantId);
+  const variants = await prisma.productVariant.findMany({
+    where: { id: { in: variantIds } },
+    select: { id: true, stock: true },
   });
+  const stockByVariantId = new Map(variants.map((v) => [v.id, v.stock]));
 
   const existingRows = await prisma.cartItem.findMany({
-    where: {
-      userId,
-      productId: { in: productIds },
-    },
-    select: {
-      productId: true,
-      quantity: true,
-    },
+    where: { userId, variantId: { in: variantIds } },
+    select: { variantId: true, quantity: true },
   });
-
-  const stockByProductId = new Map(products.map((product) => [product.id, product.stock]));
-  const existingQuantityByProductId = new Map(
-    existingRows.map((row) => [row.productId, row.quantity]),
+  const existingByVariantId = new Map(
+    existingRows.map((row) => [row.variantId, row.quantity]),
   );
 
   const writes = requested.flatMap((item) => {
-    const stock = stockByProductId.get(item.productId);
+    const stock = stockByVariantId.get(item.variantId);
     if (stock == null || stock <= 0) return [];
 
-    const existingQuantity = existingQuantityByProductId.get(item.productId) ?? 0;
+    const existingQuantity = existingByVariantId.get(item.variantId) ?? 0;
     const remaining = Math.max(0, stock - existingQuantity);
     if (remaining <= 0) return [];
 
     const quantity = Math.min(item.quantity, remaining);
     return prisma.cartItem.upsert({
-      where: { userId_productId: { userId, productId: item.productId } },
-      create: { userId, productId: item.productId, quantity },
-      update: {
-        quantity: {
-          increment: quantity,
-        },
+      where: { userId_variantId: { userId, variantId: item.variantId } },
+      create: {
+        userId,
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity,
       },
+      update: { quantity: { increment: quantity } },
     });
   });
 
@@ -265,42 +339,42 @@ export async function syncCartItems(userId: string, input: SyncCartInput) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Add a product to the cart. If the user already has a row for this
- * product we add to it; otherwise we create a new one. The combined
- * quantity is capped at `Product.stock`.
+ * Add a variant to the cart. If the user already has a row for this
+ * exact variant we add to it; otherwise we create a new one. The
+ * combined quantity is capped at the variant's `stock`.
  */
 export async function addToCart(userId: string, input: AddToCartInput) {
-  const product = await prisma.product.findUnique({
-    where: { id: input.productId },
-    select: { id: true, name: true, stock: true, status: true },
-  });
-  if (!product) throw new CartError(404, "Product not found.");
-  if (product.status !== "ACTIVE") {
-    throw new CartError(409, `"${product.name}" is no longer available.`);
-  }
-  if (product.stock <= 0) {
+  const { product, variant } = await resolveVariant(
+    input.productId,
+    input.variantId,
+  );
+
+  if (variant.stock <= 0) {
     throw new CartError(409, `"${product.name}" is out of stock.`);
   }
 
-  // Existing row (if any) so we know the current quantity.
   const existing = await prisma.cartItem.findUnique({
-    where: { userId_productId: { userId, productId: product.id } },
-    select: { id: true, quantity: true },
+    where: { userId_variantId: { userId, variantId: variant.id } },
+    select: { quantity: true },
   });
 
   const nextQuantity = (existing?.quantity ?? 0) + input.quantity;
-  if (nextQuantity > product.stock) {
+  if (nextQuantity > variant.stock) {
     throw new CartError(
       409,
-      `Only ${product.stock} unit(s) of "${product.name}" available.`,
-      { available: product.stock, requested: nextQuantity },
+      `Only ${variant.stock} unit(s) of "${product.name}" available.`,
+      { available: variant.stock, requested: nextQuantity },
     );
   }
 
-  // `upsert` keeps it to one round trip.
   const row = await prisma.cartItem.upsert({
-    where: { userId_productId: { userId, productId: product.id } },
-    create: { userId, productId: product.id, quantity: input.quantity },
+    where: { userId_variantId: { userId, variantId: variant.id } },
+    create: {
+      userId,
+      productId: product.id,
+      variantId: variant.id,
+      quantity: input.quantity,
+    },
     update: { quantity: nextQuantity },
     include: cartItemInclude,
   });
@@ -321,7 +395,7 @@ export async function updateCartItem(
 ) {
   const existing = await prisma.cartItem.findFirst({
     where: { id: itemId, userId },
-    include: { product: { select: cartItemProductSelect } },
+    include: cartItemInclude,
   });
   if (!existing) throw new CartError(404, "Cart item not found.");
 
@@ -329,11 +403,12 @@ export async function updateCartItem(
   if (product.status !== "ACTIVE") {
     throw new CartError(409, `"${product.name}" is no longer available.`);
   }
-  if (input.quantity > product.stock) {
+  const stock = existing.variant.stock;
+  if (input.quantity > stock) {
     throw new CartError(
       409,
-      `Only ${product.stock} unit(s) of "${product.name}" available.`,
-      { available: product.stock, requested: input.quantity },
+      `Only ${stock} unit(s) of "${product.name}" available.`,
+      { available: stock, requested: input.quantity },
     );
   }
 
@@ -348,7 +423,6 @@ export async function updateCartItem(
 
 /** Delete a single cart row owned by the caller. */
 export async function removeCartItem(itemId: string, userId: string) {
-  // Scope by userId in the WHERE clause: prevents IDOR.
   const result = await prisma.cartItem.deleteMany({
     where: { id: itemId, userId },
   });

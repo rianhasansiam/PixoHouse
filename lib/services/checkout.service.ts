@@ -3,6 +3,17 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import {
+  greaterThanOrEqual,
+  minDecimal,
+  multiply,
+  percentOf,
+  round2,
+  subtractClamped,
+  sumDecimals,
+  toDecimal,
+  toNumber,
+} from "@/lib/money";
 import { ServiceError } from "@/lib/services/service-error";
 import {
   findActivePromoCode,
@@ -44,17 +55,22 @@ export class CheckoutError extends ServiceError {
 /*  Money helpers                                                             */
 /* -------------------------------------------------------------------------- */
 
-function money(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-function effectivePrice(product: {
-  price: number;
-  discountPrice: number | null;
-}) {
-  return product.discountPrice != null && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+/**
+ * Pick the effective unit price for a variant as an exact Decimal:
+ * the sale price when it's set and lower than the list price,
+ * otherwise the list price.
+ */
+function effectiveVariantPrice(variant: {
+  price: Prisma.Decimal;
+  salePrice: Prisma.Decimal | null;
+}): Prisma.Decimal {
+  if (
+    variant.salePrice != null &&
+    toDecimal(variant.salePrice).lessThan(toDecimal(variant.price))
+  ) {
+    return toDecimal(variant.salePrice);
+  }
+  return toDecimal(variant.price);
 }
 
 function generateOrderNumber(): string {
@@ -70,7 +86,7 @@ function generateOrderNumber(): string {
 /*  Item resolution                                                           */
 /* -------------------------------------------------------------------------- */
 
-type ResolvedItem = { productId: string; quantity: number };
+type ResolvedItem = { productId: string; variantId?: string; quantity: number };
 
 type ResolvedItems = {
   items: ResolvedItem[];
@@ -90,24 +106,25 @@ async function resolveItems(
   bodyItems: ResolvedItem[] | undefined,
 ): Promise<ResolvedItems> {
   if (bodyItems && bodyItems.length > 0) {
-    // Merge duplicates so the same productId can't appear twice.
-    const merged = new Map<string, number>();
+    // Merge duplicates so the same variant can't appear twice. Lines
+    // without an explicit variant are keyed by product (the service
+    // resolves them to the primary variant during pricing).
+    const merged = new Map<string, ResolvedItem>();
     for (const item of bodyItems) {
-      const current = merged.get(item.productId) ?? 0;
-      merged.set(item.productId, current + item.quantity);
+      const key = item.variantId ?? `product:${item.productId}`;
+      const current = merged.get(key);
+      merged.set(key, {
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: (current?.quantity ?? 0) + item.quantity,
+      });
     }
-    return {
-      items: Array.from(merged.entries()).map(([productId, quantity]) => ({
-        productId,
-        quantity,
-      })),
-      fromCart: false,
-    };
+    return { items: Array.from(merged.values()), fromCart: false };
   }
 
   const cart = await prisma.cartItem.findMany({
     where: { userId },
-    select: { productId: true, quantity: true },
+    select: { productId: true, variantId: true, quantity: true },
   });
 
   if (cart.length === 0) {
@@ -117,7 +134,14 @@ async function resolveItems(
     );
   }
 
-  return { items: cart, fromCart: true };
+  return {
+    items: cart.map((row) => ({
+      productId: row.productId,
+      variantId: row.variantId,
+      quantity: row.quantity,
+    })),
+    fromCart: true,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -126,12 +150,18 @@ async function resolveItems(
 
 type PricedLine = {
   productId: string;
+  variantId: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
   name: string;
   image: string | null;
   quantity: number;
-  unitPrice: number;
-  originalPrice: number;
-  lineTotal: number;
+  // Money kept as exact Decimals internally; converted to number only
+  // at the JSON boundary (see previewCheckout / summarize).
+  unitPrice: Prisma.Decimal;
+  originalPrice: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
   stock: number;
 };
 
@@ -142,11 +172,24 @@ async function priceLines(items: ResolvedItem[]): Promise<PricedLine[]> {
     select: {
       id: true,
       name: true,
-      image: true,
-      price: true,
-      discountPrice: true,
-      stock: true,
       status: true,
+      images: {
+        orderBy: { position: "asc" },
+        take: 1,
+        select: { url: true },
+      },
+      variants: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          sku: true,
+          color: true,
+          size: true,
+          price: true,
+          salePrice: true,
+          stock: true,
+        },
+      },
     },
   });
   const productMap = new Map(products.map((p) => [p.id, p]));
@@ -163,23 +206,40 @@ async function priceLines(items: ResolvedItem[]): Promise<PricedLine[]> {
         { productId: product.id },
       );
     }
-    if (product.stock < line.quantity) {
+    // Use the exact selected variant when provided, else the primary one.
+    const variant = line.variantId
+      ? product.variants.find((v) => v.id === line.variantId)
+      : product.variants[0];
+    if (!variant) {
       throw new CheckoutError(
         409,
-        `Only ${product.stock} unit(s) of "${product.name}" left in stock.`,
-        { productId: product.id, available: product.stock },
+        line.variantId
+          ? `Selected variant for "${product.name}" is no longer available.`
+          : `"${product.name}" has no purchasable variant.`,
+        { productId: product.id },
       );
     }
-    const unitPrice = effectivePrice(product);
+    if (variant.stock < line.quantity) {
+      throw new CheckoutError(
+        409,
+        `Only ${variant.stock} unit(s) of "${product.name}" left in stock.`,
+        { productId: product.id, available: variant.stock },
+      );
+    }
+    const unitPrice = effectiveVariantPrice(variant);
     return {
       productId: product.id,
+      variantId: variant.id,
+      sku: variant.sku,
+      color: variant.color,
+      size: variant.size,
       name: product.name,
-      image: product.image,
+      image: product.images[0]?.url ?? null,
       quantity: line.quantity,
-      unitPrice: money(unitPrice),
-      originalPrice: money(product.price),
-      lineTotal: money(unitPrice * line.quantity),
-      stock: product.stock,
+      unitPrice,
+      originalPrice: toDecimal(variant.price),
+      lineTotal: multiply(unitPrice, line.quantity),
+      stock: variant.stock,
     };
   });
 }
@@ -193,7 +253,7 @@ type PromoApplication =
       ok: true;
       code: string;
       description: string | null;
-      discount: number;
+      discount: Prisma.Decimal;
     }
   | {
       ok: false;
@@ -204,7 +264,7 @@ type PromoApplication =
 
 async function applyPromoCode(
   rawCode: string | null | undefined,
-  subtotal: number,
+  subtotal: Prisma.Decimal,
 ): Promise<PromoApplication> {
   if (!rawCode) return null;
   const trimmed = rawCode.trim();
@@ -224,7 +284,7 @@ async function applyPromoCode(
     };
   }
 
-  if (promo.minOrder != null && subtotal < promo.minOrder) {
+  if (promo.minOrder != null && subtotal.lessThan(toDecimal(promo.minOrder))) {
     return {
       ok: false,
       code,
@@ -234,20 +294,38 @@ async function applyPromoCode(
 
   let discount =
     promo.discountType === "PERCENT"
-      ? (subtotal * promo.value) / 100
-      : promo.value;
+      ? percentOf(subtotal, promo.value)
+      : toDecimal(promo.value);
 
-  if (promo.maxDiscount != null && discount > promo.maxDiscount) {
-    discount = promo.maxDiscount;
+  if (promo.maxDiscount != null) {
+    discount = minDecimal(discount, promo.maxDiscount);
   }
 
-  discount = Math.min(money(discount), subtotal);
+  // Round to 2 dp and never exceed the subtotal.
+  discount = minDecimal(toDecimal(round2(discount)), subtotal);
 
   return {
     ok: true,
     code,
     description: promo.description,
     discount,
+  };
+}
+
+/** JSON-facing promo shape (Decimal discount converted to a number). */
+type PromoApplicationJson =
+  | { ok: true; code: string; description: string | null; discount: number }
+  | { ok: false; code: string; reason: string }
+  | null;
+
+function promoToJson(promo: PromoApplication): PromoApplicationJson {
+  if (promo == null) return null;
+  if (!promo.ok) return promo;
+  return {
+    ok: true,
+    code: promo.code,
+    description: promo.description,
+    discount: round2(promo.discount),
   };
 }
 
@@ -278,34 +356,38 @@ function summarize(
   promo: PromoApplication,
   settings: StoreSettingsSnapshot,
 ): CheckoutSummary {
-  const subtotal = money(
-    lines.reduce((sum, line) => sum + line.lineTotal, 0),
-  );
-  const totalSavings = money(
-    lines.reduce(
-      (sum, line) =>
-        sum + Math.max(0, (line.originalPrice - line.unitPrice) * line.quantity),
-      0,
+  const subtotal = sumDecimals(lines.map((line) => line.lineTotal));
+  const totalSavings = sumDecimals(
+    lines.map((line) =>
+      subtractClamped(
+        multiply(line.originalPrice, line.quantity),
+        multiply(line.unitPrice, line.quantity),
+      ),
     ),
   );
 
-  const discount = promo?.ok ? promo.discount : 0;
-  const afterDiscount = Math.max(0, subtotal - discount);
+  const discount = promo?.ok ? promo.discount : toDecimal(0);
+  const afterDiscount = subtractClamped(subtotal, discount);
 
   const isFreeShipping =
-    subtotal === 0 || afterDiscount >= settings.freeShippingThreshold;
-  const shipping = isFreeShipping ? 0 : settings.standardShippingFee;
+    subtotal.isZero() ||
+    greaterThanOrEqual(afterDiscount, settings.freeShippingThreshold);
+  const shipping = isFreeShipping
+    ? toDecimal(0)
+    : toDecimal(settings.standardShippingFee);
 
-  const tax = money(afterDiscount * settings.taxRate);
-  const total = money(afterDiscount + shipping + tax);
+  const tax = percentOf(afterDiscount, multiply(settings.taxRate, 100));
+  const total = toDecimal(round2(afterDiscount)).plus(shipping).plus(
+    toDecimal(round2(tax)),
+  );
 
   return {
-    subtotal,
-    totalSavings,
-    discount,
-    shipping,
-    tax,
-    total,
+    subtotal: round2(subtotal),
+    totalSavings: round2(totalSavings),
+    discount: round2(discount),
+    shipping: round2(shipping),
+    tax: round2(tax),
+    total: round2(total),
     taxRate: settings.taxRate,
     freeShippingThreshold: settings.freeShippingThreshold,
     shippingFee: settings.standardShippingFee,
@@ -343,25 +425,27 @@ export async function previewCheckout(
   const lines = await priceLines(resolved);
 
   const settings = settingsToSnapshot(await getStoreSettings());
-  const subtotal = money(
-    lines.reduce((sum, line) => sum + line.lineTotal, 0),
-  );
+  const subtotal = sumDecimals(lines.map((line) => line.lineTotal));
   const promo = await applyPromoCode(input.promoCode, subtotal);
   const summary = summarize(lines, promo, settings);
 
   return {
     items: lines.map((line) => ({
       productId: line.productId,
+      variantId: line.variantId,
+      sku: line.sku,
+      color: line.color,
+      size: line.size,
       name: line.name,
       image: line.image,
       quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      originalPrice: line.originalPrice,
-      lineTotal: line.lineTotal,
+      unitPrice: round2(line.unitPrice),
+      originalPrice: round2(line.originalPrice),
+      lineTotal: round2(line.lineTotal),
       stock: line.stock,
     })),
     summary,
-    promo,
+    promo: promoToJson(promo),
   };
 }
 
@@ -370,11 +454,7 @@ export async function previewCheckout(
 /* -------------------------------------------------------------------------- */
 
 const orderInclude = {
-  items: {
-    include: {
-      product: { select: { id: true, name: true, image: true } },
-    },
-  },
+  items: true,
 } satisfies Prisma.OrderInclude;
 
 export async function placeOrder(userId: string, input: CheckoutInput) {
@@ -394,9 +474,7 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
   const lines = await priceLines(resolved);
 
   const settings = settingsToSnapshot(await getStoreSettings());
-  const subtotal = money(
-    lines.reduce((sum, line) => sum + line.lineTotal, 0),
-  );
+  const subtotal = sumDecimals(lines.map((line) => line.lineTotal));
   const promo = await applyPromoCode(input.promoCode, subtotal);
 
   if (input.promoCode && promo && !promo.ok) {
@@ -417,13 +495,12 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // Atomic stock decrement: the WHERE clause guards against the
-      // last unit being sold twice.
+      // Atomic stock decrement on the variant: the WHERE clause guards
+      // against the last unit being sold twice.
       for (const line of lines) {
-        const result = await tx.product.updateMany({
+        const result = await tx.productVariant.updateMany({
           where: {
-            id: line.productId,
-            status: "ACTIVE",
+            id: line.variantId,
             stock: { gte: line.quantity },
           },
           data: { stock: { decrement: line.quantity } },
@@ -435,6 +512,16 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
             { productId: line.productId },
           );
         }
+
+        // Ledger entry so stock movements are auditable.
+        await tx.inventoryLog.create({
+          data: {
+            variantId: line.variantId,
+            type: "ORDER_PLACED",
+            quantity: -line.quantity,
+            note: `Order ${orderNumber}`,
+          },
+        });
       }
 
       const order = await tx.order.create({
@@ -458,8 +545,15 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
           items: {
             create: lines.map((line) => ({
               productId: line.productId,
+              variantId: line.variantId,
+              productName: line.name,
+              productImage: line.image,
+              sku: line.sku,
+              color: line.color,
+              size: line.size,
               quantity: line.quantity,
-              price: line.unitPrice,
+              unitPrice: round2(line.unitPrice),
+              totalPrice: round2(line.lineTotal),
             })),
           },
         },
@@ -479,7 +573,7 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
         await tx.cartItem.deleteMany({ where: { userId } });
       }
 
-      return { order, summary, promo };
+      return { order, summary, promo: promoToJson(promo) };
     });
   } catch (error) {
     if (

@@ -63,27 +63,29 @@ const getCachedHomeCategories = unstable_cache(
             id: true,
             name: true,
             description: true,
-            price: true,
-            discountPrice: true,
-            image: true,
-            images: true,
-            rating: true,
-            reviewCount: true,
-            badge: true,
+            images: {
+              orderBy: { position: "asc" },
+              select: { url: true },
+            },
+            variants: {
+              orderBy: { createdAt: "asc" },
+              take: 1,
+              select: { price: true, salePrice: true },
+            },
           },
         },
-        categoryBanners: {
-          where: { status: "ACTIVE" },
+        // Category banners now live in the unified Banner model,
+        // discriminated by `type` with label/heading/discount in metadata.
+        banners: {
+          where: { type: "CATEGORY", status: "ACTIVE" },
           orderBy: { createdAt: "desc" },
           take: 1,
           select: {
             id: true,
             image: true,
-            label: true,
-            heading: true,
-            discount: true,
             description: true,
             link: true,
+            metadata: true,
           },
         },
       },
@@ -94,30 +96,48 @@ const getCachedHomeCategories = unstable_cache(
         id: category.id,
         name: category.name,
         image: category.image,
-        products: category.products.map((product) => ({
-          id: product.id,
-          name: product.name,
-          description: product.description,
-          price: product.price,
-          discountPrice: product.discountPrice,
-          image: product.image ?? FALLBACK_PRODUCT_IMAGE,
-          images: product.images,
-          rating: product.rating,
-          reviewCount: product.reviewCount,
-          badge: product.badge,
-        })),
-        categoryBanner:
-          category.categoryBanners[0] !== undefined
-            ? {
-                id: category.categoryBanners[0].id,
-                image: category.categoryBanners[0].image,
-                label: category.categoryBanners[0].label,
-                heading: category.categoryBanners[0].heading,
-                discount: category.categoryBanners[0].discount,
-                description: category.categoryBanners[0].description,
-                link: category.categoryBanners[0].link,
-              }
-            : null,
+        products: category.products.map((product) => {
+          const variant = product.variants[0];
+          const price = variant ? variant.price.toNumber() : 0;
+          const sale = variant?.salePrice?.toNumber() ?? null;
+          const discountPrice = sale != null && sale < price ? sale : null;
+          const imageUrls = product.images.map((img) => img.url);
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price,
+            discountPrice,
+            image: imageUrls[0] ?? FALLBACK_PRODUCT_IMAGE,
+            images: imageUrls,
+            // rating/reviewCount/badge were dropped in the variant
+            // migration; default them so the UI keeps rendering.
+            rating: 0,
+            reviewCount: 0,
+            badge: null,
+          };
+        }),
+        categoryBanner: (() => {
+          const banner = category.banners[0];
+          if (banner === undefined) return null;
+          const meta =
+            banner.metadata &&
+            typeof banner.metadata === "object" &&
+            !Array.isArray(banner.metadata)
+              ? (banner.metadata as Record<string, unknown>)
+              : {};
+          const str = (key: string) =>
+            typeof meta[key] === "string" ? (meta[key] as string) : "";
+          return {
+            id: banner.id,
+            image: banner.image ?? "",
+            label: str("label"),
+            heading: str("heading"),
+            discount: str("discount"),
+            description: banner.description ?? "",
+            link: banner.link,
+          };
+        })(),
       }))
       .filter((category) => category.products.length > 0);
   },

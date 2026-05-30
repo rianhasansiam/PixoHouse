@@ -390,21 +390,21 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={item.product.image || FALLBACK_IMAGE}
-                        alt={item.product.name}
+                        src={item.productImage || FALLBACK_IMAGE}
+                        alt={item.productName}
                         className="h-full w-full object-cover"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-900">
-                        {item.product.name}
+                        {item.productName}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
-                        Qty {item.quantity} · BDT {item.price.toLocaleString()} each
+                        Qty {item.quantity} · BDT {item.unitPrice.toLocaleString()} each
                       </p>
                     </div>
                     <p className="text-sm font-bold text-gray-900">
-                      BDT {(item.price * item.quantity).toLocaleString()}
+                      BDT {item.totalPrice.toLocaleString()}
                     </p>
                   </li>
                 ))}

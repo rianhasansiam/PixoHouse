@@ -6,29 +6,37 @@ datasource db {
   provider = "postgresql"
 }
 
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Users & auth
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
 model User {
   id       String  @id @default(cuid())
   name     String
   email    String  @unique
-  password String? // nullable to support OAuth (e.g. Google) sign-in
-  phone    String? // nullable: OAuth sign-ins don't collect this up-front
-  city     String? // nullable: OAuth sign-ins don't collect this up-front
+  password String? // nullable: Google OAuth users never set a password
+  phone    String?
+  city     String?
   image    String? // profile picture URL (e.g. Google avatar)
   role     Role    @default(USER)
 
-  // How this row was first created. Stamped automatically:
-  //   - CREDENTIAL when the visitor signs up via the email/password form
-  //   - GOOGLE     when the visitor authenticates with Google OAuth
-  // Treat the value as immutable once set; we never silently upgrade.
+  // How this row was first created (CREDENTIAL or GOOGLE). Immutable.
   provider AuthProvider @default(CREDENTIAL)
 
   // Captured when the user accepts the Terms & Privacy at registration.
-  // Null means the user has not (yet) accepted the latest terms.
   termsAcceptedAt DateTime?
 
-  orders    Order[]
-  cartItems CartItem[]
-  wishlists Wishlist[]
+  orders          Order[]
+  cartItems       CartItem[]
+  wishlists       Wishlist[]
+  addresses       Address[]
+  promoCodeUsages PromoCodeUsage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -44,6 +52,16 @@ enum AuthProvider {
   GOOGLE
 }
 
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Catalog
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
 model Category {
   id          String         @id @default(cuid())
   name        String
@@ -52,8 +70,8 @@ model Category {
   image       String?
   status      CategoryStatus @default(ACTIVE)
 
-  products        Product[]
-  categoryBanners CategoryBanner[]
+  products Product[]
+  banners  Banner[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -67,22 +85,17 @@ enum CategoryStatus {
 }
 
 model Product {
-  id   String @id @default(cuid())
-  name String
-
-  description   String?
-  price         Float
-  discountPrice Float?
-  stock         Int           @default(0)
-  image         String?
-  images        String[] // multiple product images
-  rating        Float         @default(0)
-  reviewCount   Int           @default(0)
-  badge         String? // e.g. "Bestseller", "New", "Hot Deal", "Trending"
-  status        ProductStatus @default(ACTIVE)
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  status      ProductStatus @default(ACTIVE)
 
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  variants ProductVariant[]
+  images   ProductImage[]
 
   cartItems  CartItem[]
   wishlists  Wishlist[]
@@ -90,6 +103,9 @@ model Product {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([categoryId, status])
+  @@index([status, createdAt])
 }
 
 enum ProductStatus {
@@ -97,60 +113,130 @@ enum ProductStatus {
   INACTIVE
 }
 
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  sku       String   @unique
+  color     String?
+  size      String?
+  price     Decimal  @db.Decimal(10, 2)
+  salePrice Decimal? @db.Decimal(10, 2)
+  stock     Int      @default(0)
+
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  inventoryLogs InventoryLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([stock])
+  @@index([price])
+  @@index([salePrice])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url      String
+  alt      String?
+  position Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Cart & wishlist
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+// One row per (user, variant). `variantId` identifies the exact
+// purchasable item (e.g. "Black / Large"); `productId` is kept for
+// easy product-level querying.
 model CartItem {
   id String @id @default(cuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   quantity Int @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, productId])
+  @@unique([userId, variantId])
+  @@index([userId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 model Wishlist {
   id String @id @default(cuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   productId String
-  product   Product @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
 }
 
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Orders
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+// Checkout is authenticated-only: every order belongs to a real user.
+// onDelete: Restrict protects order history from accidental user deletes.
 model Order {
   id          String @id @default(cuid())
-  orderNumber String @unique // human-readable receipt id, e.g. "ORD-260525-A1B2C3D4"
+  orderNumber String @unique // e.g. "ORD-260525-A1B2C3D4"
 
-  // Nullable for backward compatibility with rows from the previous
-  // guest-checkout era; the current code path always sets it to a real
-  // session userId because checkout is auth-only.
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   items OrderItem[]
 
-  subtotal       Float
-  deliveryCharge Float @default(0)
-  discountAmount Float @default(0)
-  taxAmount      Float @default(0)
-  totalAmount    Float
+  subtotal       Decimal @db.Decimal(10, 2)
+  deliveryCharge Decimal @default(0) @db.Decimal(10, 2)
+  discountAmount Decimal @default(0) @db.Decimal(10, 2)
+  taxAmount      Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount    Decimal @db.Decimal(10, 2)
 
   customerName       String
   customerPhone      String
   customerAddress    String
   customerEmail      String? // optional override for the receipt email
   customerCity       String? // city / district
+  customerArea       String? // area / thana, copied from the saved Address
   customerPostalCode String? // ZIP / postal code
   customerNote       String? // optional shipping/delivery note from the customer
 
@@ -159,6 +245,9 @@ model Order {
   status        OrderStatus   @default(PENDING)
   paymentMethod PaymentMethod @default(CASH_ON_DELIVERY)
   paymentStatus PaymentStatus @default(UNPAID)
+
+  payments        PaymentTransaction[]
+  promoCodeUsages PromoCodeUsage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -186,160 +275,68 @@ enum PaymentStatus {
   UNPAID
 }
 
+// One line per ordered variant. `productId`/`variantId` are nullable and
+// SET NULL on delete so order history survives product/variant removal.
+// The snapshot fields preserve exactly what was purchased.
 model OrderItem {
   id String @id @default(cuid())
 
   orderId String
-  order   Order  @relation(fields: [orderId], references: [id])
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
-  quantity Int
-  price    Float // product price at order time
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-}
-
-model CarouselBanner {
-  id          String  @id @default(cuid())
-  image       String
-  title       String // e.g. "25% OFF", "SPECIAL"
-  subtitle    String // e.g. "VEGETABLES", "OFFER"
-  description String // e.g. "Fresh vegetables delivered fast..."
-  badge       String // e.g. "Weekend Special", "Flash Deal"
-  bgFrom      String // gradient start class (e.g. "from-green-500")
-  bgVia       String? // gradient middle class (e.g. "via-emerald-600")
-  bgTo        String // gradient end class (e.g. "to-green-800")
-  link        String?
-  position    Int     @default(0)
-
-  status CarouselBannerStatus @default(ACTIVE)
+  // Snapshot of the purchased item at order time.
+  productName  String
+  productImage String?
+  sku          String?
+  color        String?
+  size         String?
+  quantity     Int
+  unitPrice    Decimal @db.Decimal(10, 2)
+  totalPrice   Decimal @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@index([status, position])
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
 }
 
-enum CarouselBannerStatus {
-  ACTIVE
-  INACTIVE
-}
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Promo codes
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
 
-model CategoryBanner {
-  id          String  @id @default(cuid())
-  image       String
-  label       String // e.g. "SALE", "MEGA DEAL"
-  heading     String // e.g. "FLASH SALE", "TECH FEST"
-  discount    String // e.g. "40%", "50%"
-  description String
-  link        String?
-
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  status CategoryBannerStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([categoryId, status])
-}
-
-enum CategoryBannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-model TopBanner {
-  id          String @id @default(cuid())
-  icon        String // icon name (e.g. "Tag", "Gift", "Percent", "Sparkles")
-  badge       String // e.g. "MEGA SALE", "FLASH DEAL"
-  discount    String // e.g. "70% OFF", "Buy 2 Get 1"
-  description String // e.g. "on all products"
-  tag         String // e.g. "Limited Time Only", "Today Only"
-  tagIcon     String // icon name (e.g. "Sparkles", "Zap", "TrendingUp")
-  position    Int    @default(0)
-
-  status TopBannerStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, position])
-}
-
-enum TopBannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-// Compact deal cards rendered in the horizontal carousel on the
-// product-details page. Managed from the admin "Banners" page.
-model DealBanner {
-  id       String  @id @default(cuid())
-  image    String
-  title    String // e.g. "Up to 70% Off"
-  subtitle String // e.g. "Black Friday"
-  bgClass  String // tailwind bg utility, e.g. "bg-rose-500"
-  link     String?
-  position Int     @default(0)
-
-  status DealBannerStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, position])
-}
-
-enum DealBannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-// Tall side-rail promo banners on the product-details page.
-// Managed from the admin "Banners" page.
-model PromoBanner {
-  id       String  @id @default(cuid())
-  image    String
-  title    String // e.g. "Mega Sale"
-  subtitle String // e.g. "Save Big Today"
-  discount String // e.g. "UP TO 60% OFF"
-  bgClass  String // tailwind bg utility, e.g. "bg-violet-700"
-  link     String?
-  position Int     @default(0)
-
-  status PromoBannerStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status, position])
-}
-
-enum PromoBannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-// Discount codes the customer can apply at checkout.
-// Managed from the admin "Settings" page.
+// Discount codes applied at checkout. `code` is stored uppercase by the
+// service layer and is unique. For true case-insensitive uniqueness add a
+// manual migration: CREATE UNIQUE INDEX "PromoCode_code_lower_key"
+//   ON "PromoCode" (LOWER(code));
 model PromoCode {
-  id           String           @id @default(cuid())
-  code         String           @unique // case-insensitive at the service layer
+  id           String            @id @default(cuid())
+  code         String            @unique
   description  String?
   discountType PromoDiscountType @default(FLAT)
   // FLAT: amount in currency units. PERCENT: 0..100 percentage of subtotal.
-  value        Float
-  minOrder     Float?           // minimum subtotal required to apply
-  maxDiscount  Float?           // optional cap when discountType is PERCENT
+  value        Decimal           @db.Decimal(10, 2)
+  minOrder     Decimal?          @db.Decimal(10, 2)
+  maxDiscount  Decimal?          @db.Decimal(10, 2)
   startsAt     DateTime?
   endsAt       DateTime?
-  usageLimit   Int?             // total uses allowed across all customers
-  usedCount    Int              @default(0)
-  status       PromoCodeStatus  @default(ACTIVE)
+  usageLimit   Int?
+  usedCount    Int               @default(0)
+  status       PromoCodeStatus   @default(ACTIVE)
+
+  usages PromoCodeUsage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -357,26 +354,63 @@ enum PromoCodeStatus {
   INACTIVE
 }
 
-// Singleton row that stores cart-time settings the admin can tune
-// without a deploy: tax rate, delivery charge, and free shipping
-// threshold. Service ensures exactly one row exists.
+// Records each application of a promo code so usage can be audited.
+// Restrict on order/promoCode keeps audit data from being wiped.
+model PromoCodeUsage {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Restrict)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  usedAt DateTime @default(now())
+
+  @@unique([promoCodeId, orderId])
+  @@index([promoCodeId])
+  @@index([userId])
+  @@index([orderId])
+}
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Store settings
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+// Singleton row holding cart-time settings the admin can tune.
 model StoreSettings {
-  id                    String @id @default(cuid())
-  taxRate               Float  @default(0.05)   // 0..1, e.g. 0.05 = 5%
-  standardShippingFee   Float  @default(120)
-  freeShippingThreshold Float  @default(50000)  // BDT subtotal at which delivery is free
-  expressShippingFee    Float  @default(250)
-  currency              String @default("BDT")
+  id                    String  @id @default(cuid())
+  taxRate               Decimal @default(0.05) @db.Decimal(5, 4) // 0..1, e.g. 0.05 = 5%
+  standardShippingFee   Decimal @default(120) @db.Decimal(10, 2)
+  freeShippingThreshold Decimal @default(50000) @db.Decimal(10, 2) // BDT subtotal at which delivery is free
+  expressShippingFee    Decimal @default(250) @db.Decimal(10, 2)
+  currency              String  @default("BDT")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Contact / addresses / payments / inventory
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
 // Inbound messages submitted from the public /contact form.
-// Captured without requiring a logged-in user; the admin can review,
-// mark as read, archive, or delete from the admin "Messages" page.
 model ContactMessage {
-  id      String @id @default(cuid())
+  id      String  @id @default(cuid())
   name    String
   email   String
   phone   String?
@@ -396,4 +430,128 @@ enum ContactMessageStatus {
   NEW
   READ
   ARCHIVED
+}
+
+// Saved shipping addresses for a user. Copied into the Order's customer*
+// fields at checkout so the order snapshot survives address edits/deletes.
+model Address {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName   String
+  phone      String
+  city       String
+  area       String?
+  address    String
+  postalCode String?
+  isDefault  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// One row per payment attempt against an order.
+model PaymentTransaction {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider      String // SSLCommerz, Stripe, bKash, Nagad
+  transactionId String?
+  amount        Decimal                  @db.Decimal(10, 2)
+  currency      String                   @default("BDT")
+  status        PaymentTransactionStatus @default(PENDING)
+  rawResponse   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([transactionId])
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+// Append-only ledger of stock movements, tracked per variant.
+model InventoryLog {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  type     InventoryLogType
+  quantity Int
+  note     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([variantId])
+}
+
+enum InventoryLogType {
+  STOCK_IN
+  STOCK_OUT
+  ORDER_PLACED
+  ORDER_CANCELLED
+  RETURNED
+  MANUAL_ADJUSTMENT
+}
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Banners (unified)
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+// Single admin-managed banner model. `type` selects the render location;
+// `metadata` holds type-specific extras (gradients, icons, badges, etc.)
+// so the table stays lean instead of carrying dozens of nullable columns.
+model Banner {
+  id          String       @id @default(cuid())
+  type        BannerType
+  title       String?
+  subtitle    String?
+  description String?
+  image       String?
+  link        String?
+  position    Int          @default(0)
+  status      BannerStatus @default(ACTIVE)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Type-specific fields, e.g. icon, badge, discount, tag, tagIcon,
+  // bgClass, bgFrom, bgVia, bgTo, label, heading.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status, position])
+  @@index([categoryId, status])
+}
+
+enum BannerType {
+  CAROUSEL
+  CATEGORY
+  TOP
+  DEAL
+  PROMO
+}
+
+enum BannerStatus {
+  ACTIVE
+  INACTIVE
 }

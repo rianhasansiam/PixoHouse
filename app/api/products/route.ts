@@ -7,6 +7,7 @@ import { jsonError, created, ok } from "@/lib/api/response";
 import {
   createProduct,
   listProductsCached,
+  serializeProduct,
 } from "@/lib/services/product.service";
 import {createProductSchema, productQuerySchema,} from "@/lib/validations/product.validation";
 
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const { items, meta } = await listProductsCached(parsed.data);
-    return ok(items, meta);
+    return ok(items.map(serializeProduct), meta);
   } catch (error) {
     console.error("[products.GET] failed", error);
     return jsonError(500, "Failed to fetch products.");
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     const product = await createProduct(parsed.data);
     revalidateTag("products", "max");
     revalidateTag("home-categories", "max");
-    return created(product);
+    return created(serializeProduct(product));
   } catch (error) {
     console.error("[products.POST] failed", error);
     return jsonError(500, "Failed to create product.");

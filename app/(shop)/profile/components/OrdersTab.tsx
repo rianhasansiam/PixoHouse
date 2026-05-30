@@ -280,8 +280,8 @@ function OrderRow({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={item.id}
-                src={item.product.image || FALLBACK_PRODUCT_IMAGE}
-                alt={item.product.name}
+                src={item.productImage || FALLBACK_PRODUCT_IMAGE}
+                alt={item.productName}
                 className="h-14 w-14 rounded-xl border-2 border-white object-cover shadow-sm sm:h-16 sm:w-16"
               />
             ))}
@@ -313,7 +313,7 @@ function OrderRow({
               </span>
             </div>
             <p className="mt-1.5 truncate text-sm font-bold text-gray-900">
-              {order.items[0]?.product.name ?? "Order items"}
+              {order.items[0]?.productName ?? "Order items"}
               {order.items.length > 1 && (
                 <span className="text-gray-500">
                   {" "}

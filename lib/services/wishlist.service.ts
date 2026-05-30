@@ -25,14 +25,17 @@ const wishlistInclude = {
     select: {
       id: true,
       name: true,
-      image: true,
-      price: true,
-      discountPrice: true,
-      rating: true,
-      reviewCount: true,
-      badge: true,
-      stock: true,
       status: true,
+      images: {
+        orderBy: { position: "asc" },
+        take: 1,
+        select: { url: true },
+      },
+      variants: {
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { price: true, salePrice: true, stock: true },
+      },
       category: {
         select: { name: true },
       },
@@ -63,30 +66,36 @@ export type WishlistUiItem = {
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
 
-function effectivePrice(product: { price: number; discountPrice: number | null }) {
-  return product.discountPrice != null && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+function effectivePrice(variant: {
+  price: Prisma.Decimal;
+  salePrice: Prisma.Decimal | null;
+}) {
+  const price = variant.price.toNumber();
+  const sale = variant.salePrice?.toNumber() ?? null;
+  return sale != null && sale < price ? sale : price;
 }
 
 function toWishlistUiItem(row: WishlistWithProduct): WishlistUiItem {
-  const currentPrice = effectivePrice(row.product);
-  const hasValidDiscount =
-    row.product.discountPrice != null && row.product.discountPrice < row.product.price;
+  const variant = row.product.variants[0];
+  const listPrice = variant ? variant.price.toNumber() : 0;
+  const currentPrice = variant ? effectivePrice(variant) : 0;
+  const hasValidDiscount = currentPrice < listPrice;
+  const stock = variant?.stock ?? 0;
 
   return {
     id: row.product.id,
     name: row.product.name,
     brand: row.product.category.name,
-    image: row.product.image ?? FALLBACK_PRODUCT_IMAGE,
+    image: row.product.images[0]?.url ?? FALLBACK_PRODUCT_IMAGE,
     price: currentPrice,
-    originalPrice: hasValidDiscount ? row.product.price : undefined,
-    rating: row.product.rating,
-    reviewCount: row.product.reviewCount,
+    originalPrice: hasValidDiscount ? listPrice : undefined,
+    // rating/reviewCount/badge were dropped in the variant migration.
+    rating: 0,
+    reviewCount: 0,
     category: row.product.category.name,
-    inStock: row.product.status === "ACTIVE" && row.product.stock > 0,
+    inStock: row.product.status === "ACTIVE" && stock > 0,
     addedAt: row.createdAt.toISOString(),
-    badge: row.product.badge ?? undefined,
+    badge: undefined,
   };
 }
 

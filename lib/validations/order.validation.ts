@@ -44,6 +44,7 @@ const customerAddress = z
 
 const orderItem = z.object({
   productId: z.string().trim().min(1, "Product is required."),
+  variantId: z.string().trim().min(1).optional(),
   quantity: z
     .number({ error: "Quantity must be a number." })
     .int("Quantity must be a whole number.")
