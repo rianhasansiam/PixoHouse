@@ -83,10 +83,6 @@ export default async function ProductDetailsPage({ params }: Props) {
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const price = effectivePrice(product);
-  const originalPrice = listPrice(product);
-  const discount = discountPercent(price, originalPrice);
-
   // Pull a generous batch from the same category so we can split it into
   // recent + related without hitting the DB twice. Banners come from
   // their own cached services so a marketing change shows up here on the
@@ -150,9 +146,6 @@ export default async function ProductDetailsPage({ params }: Props) {
             <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-100">
               <ProductInfo
                 name={product.name}
-                price={price}
-                originalPrice={originalPrice}
-                discount={discount}
                 specs={[]}
                 deliveryTime="2 Hours"
               />
@@ -160,12 +153,16 @@ export default async function ProductDetailsPage({ params }: Props) {
               <ProductActions
                 productId={product.id}
                 productName={product.name}
-                price={price}
-                inStock={
-                  product.status === "ACTIVE" &&
-                  (product.variants[0]?.stock ?? 0) > 0
-                }
-                stockCount={product.variants[0]?.stock ?? 0}
+                image={galleryImages[0]}
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  sku: v.sku,
+                  color: v.color,
+                  size: v.size,
+                  price: v.price.toNumber(),
+                  salePrice: v.salePrice != null ? v.salePrice.toNumber() : null,
+                  stock: v.stock,
+                }))}
               />
             </div>
           </div>

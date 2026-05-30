@@ -1,7 +1,6 @@
 import "server-only";
 
 import { Prisma } from "@prisma/client";
-import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import type {
@@ -203,14 +202,8 @@ export async function listProducts(query: ProductQueryInput) {
   };
 }
 
-const getCachedProductList = unstable_cache(
-  async (query: ProductQueryInput) => listProducts(query),
-  ["products-list"],
-  { revalidate: 300, tags: ["products"] },
-);
-
 export function listProductsCached(query: ProductQueryInput) {
-  return getCachedProductList(query);
+  return listProducts(query);
 }
 
 export function getProductById(id: string) {

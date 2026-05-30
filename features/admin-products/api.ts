@@ -73,6 +73,65 @@ export const EMPTY_FORM: ProductFormState = {
   categoryId: "",
 };
 
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as UnknownRecord;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const out: string[] = [];
+  for (const entry of value) {
+    const direct = readString(entry);
+    if (direct) {
+      out.push(direct);
+      continue;
+    }
+    const nested = asRecord(entry);
+    const url = nested ? readString(nested.url) : null;
+    if (url) out.push(url);
+  }
+  return out;
+}
+
+function readCategory(
+  row: UnknownRecord,
+): { id: string; name: string; image: string | null } {
+  const categoryRaw = row.category;
+  const categoryRecord = asRecord(categoryRaw);
+  const categoryIdFromRow = readString(row.categoryId) ?? "";
+
+  if (categoryRecord) {
+    return {
+      id: readString(categoryRecord.id) ?? categoryIdFromRow,
+      name: readString(categoryRecord.name) ?? "Uncategorized",
+      image: readString(categoryRecord.image),
+    };
+  }
+
+  if (typeof categoryRaw === "string" && categoryRaw.trim().length > 0) {
+    return { id: categoryIdFromRow, name: categoryRaw, image: null };
+  }
+
+  return { id: categoryIdFromRow, name: "Uncategorized", image: null };
+}
+
 export function parseProductsPayload(payload: unknown): AdminProduct[] {
   const envelope = payload as ApiEnvelope<unknown>;
   if (!envelope?.success || !Array.isArray(envelope.data)) {
@@ -80,20 +139,34 @@ export function parseProductsPayload(payload: unknown): AdminProduct[] {
   }
 
   return envelope.data.map((entry) => {
-    const item = entry as AdminProduct;
+    const row = asRecord(entry);
+    if (!row) {
+      throw new Error("Products API returned an invalid product row.");
+    }
+
+    const category = readCategory(row);
+    const images = readStringArray(row.images);
+    const image = readString(row.image) ?? images[0] ?? null;
+    const price = readNumber(row.price) ?? 0;
+    const discountPrice = readNumber(row.discountPrice);
+    const stock = readNumber(row.stock) ?? 0;
+
     return {
-      ...item,
-      status: item.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
-      image: item.image ?? null,
-      description: item.description ?? null,
-      discountPrice: item.discountPrice ?? null,
-      badge: item.badge ?? null,
-      images: Array.isArray(item.images) ? item.images : [],
-      category: {
-        id: item.category?.id ?? "",
-        name: item.category?.name ?? "Uncategorized",
-        image: item.category?.image ?? null,
-      },
+      id: readString(row.id) ?? "",
+      name: readString(row.name) ?? "Untitled Product",
+      description: readString(row.description),
+      price,
+      discountPrice,
+      image,
+      images,
+      rating: readNumber(row.rating) ?? 0,
+      reviewCount: readNumber(row.reviewCount) ?? 0,
+      badge: readString(row.badge),
+      status: row.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+      stock,
+      createdAt: readString(row.createdAt) ?? new Date(0).toISOString(),
+      categoryId: readString(row.categoryId) ?? category.id,
+      category,
     };
   });
 }

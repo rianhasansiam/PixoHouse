@@ -5,6 +5,10 @@ type CartStatus = "ACTIVE" | "INACTIVE";
 type CartItem = {
   id: string;
   productId: string;
+  variantId?: string | null;
+  sku?: string | null;
+  color?: string | null;
+  size?: string | null;
   name: string;
   image: string | null;
   quantity: number;
@@ -64,8 +68,15 @@ const cartSlice = createSlice({
     },
     upsertCartItem(state, action: PayloadAction<CartItem>) {
       const next = action.payload;
+      // Match by the exact server row id, or by the selected variant
+      // (a product can appear multiple times with different variants).
       const index = state.items.findIndex(
-        (item) => item.productId === next.productId || item.id === next.id,
+        (item) =>
+          item.id === next.id ||
+          (next.variantId != null && item.variantId === next.variantId) ||
+          (next.variantId == null &&
+            item.variantId == null &&
+            item.productId === next.productId),
       );
 
       if (index >= 0) {

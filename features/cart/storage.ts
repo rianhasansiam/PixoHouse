@@ -4,6 +4,15 @@ import type { CartItem } from "@/features/cart/api";
 export const CART_LOCAL_STORAGE_KEY = "enterfly:cart:v1";
 export const DEFAULT_CART_STOCK = 10;
 
+/** A cart line is uniquely identified by its variant when present,
+ * otherwise by its product (single-variant / legacy items). */
+export function cartItemKey(item: {
+  productId: string;
+  variantId?: string | null;
+}): string {
+  return item.variantId ? `variant:${item.variantId}` : `product:${item.productId}`;
+}
+
 export function normalizeCartItem(
   raw: unknown,
   fallbackStock = DEFAULT_CART_STOCK,
@@ -47,6 +56,10 @@ export function normalizeCartItem(
   return {
     id: id || `local:${productId}`,
     productId,
+    variantId: typeof entry.variantId === "string" ? entry.variantId : null,
+    sku: typeof entry.sku === "string" ? entry.sku : null,
+    color: typeof entry.color === "string" ? entry.color : null,
+    size: typeof entry.size === "string" ? entry.size : null,
     name,
     image: typeof entry.image === "string" && entry.image ? entry.image : null,
     quantity,
@@ -74,16 +87,18 @@ export function readLocalCart(options?: { dedupeByProductId?: boolean }): CartIt
 
     if (!options?.dedupeByProductId) return items;
 
+    // Dedupe by variant (falls back to product for legacy items).
     const deduped = new Map<string, CartItem>();
     for (const item of items) {
-      const existing = deduped.get(item.productId);
+      const key = cartItemKey(item);
+      const existing = deduped.get(key);
       if (!existing) {
-        deduped.set(item.productId, item);
+        deduped.set(key, item);
         continue;
       }
 
       const quantity = Math.max(1, existing.quantity + item.quantity);
-      deduped.set(item.productId, {
+      deduped.set(key, {
         ...existing,
         quantity,
         lineTotal: existing.unitPrice * quantity,
@@ -102,7 +117,8 @@ export function writeLocalCart(items: CartItem[]) {
 }
 
 export function upsertLocalCartItem(list: CartItem[], item: CartItem): CartItem[] {
-  const index = list.findIndex((entry) => entry.productId === item.productId);
+  const key = cartItemKey(item);
+  const index = list.findIndex((entry) => cartItemKey(entry) === key);
   if (index === -1) {
     return [item, ...list];
   }

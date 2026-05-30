@@ -704,3 +704,24 @@ const getCachedActivePromoBanners = unstable_cache(
 export function getActivePromoBanners() {
   return getCachedActivePromoBanners();
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Public read for the site-wide top promo strip                             */
+/* -------------------------------------------------------------------------- */
+
+const getCachedActiveTopBanners = unstable_cache(
+  async (): Promise<TopBannerRow[]> => {
+    const rows = await prisma.banner.findMany({
+      where: { type: "TOP", status: "ACTIVE" },
+      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+      select: bannerSelect,
+    });
+    return rows.map(toTopRow);
+  },
+  ["top-banners-active"],
+  { revalidate: 300, tags: ["top-banners"] },
+);
+
+export function getActiveTopBanners() {
+  return getCachedActiveTopBanners();
+}

@@ -59,24 +59,97 @@ const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
 const API_PAGE_SIZE = 100;
 
-function mapApiProduct(item: ApiProduct): Product {
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as UnknownRecord;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const out: string[] = [];
+  for (const entry of value) {
+    const direct = readString(entry);
+    if (direct) {
+      out.push(direct);
+      continue;
+    }
+    const nested = asRecord(entry);
+    const url = nested ? readString(nested.url) : null;
+    if (url) out.push(url);
+  }
+  return out;
+}
+
+function readCategory(
+  row: UnknownRecord,
+): { id: string; name: string; image: string | null } {
+  const categoryRaw = row.category;
+  const categoryRecord = asRecord(categoryRaw);
+  const categoryIdFromRow = readString(row.categoryId) ?? "";
+
+  if (categoryRecord) {
+    return {
+      id: readString(categoryRecord.id) ?? categoryIdFromRow,
+      name: readString(categoryRecord.name) ?? "Uncategorized",
+      image: readString(categoryRecord.image),
+    };
+  }
+
+  if (typeof categoryRaw === "string" && categoryRaw.trim().length > 0) {
+    return { id: categoryIdFromRow, name: categoryRaw, image: null };
+  }
+
+  return { id: categoryIdFromRow, name: "Uncategorized", image: null };
+}
+
+function mapApiProduct(item: unknown): Product {
+  const row = asRecord(item);
+  if (!row) {
+    throw new Error("Products API returned an invalid product row.");
+  }
+
+  const category = readCategory(row);
+  const images = readStringArray(row.images);
+  const fallbackImage = readString(row.image) ?? images[0] ?? FALLBACK_PRODUCT_IMAGE;
+  const status = row.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+  const price = readNumber(row.price) ?? 0;
+  const discountPrice = readNumber(row.discountPrice);
+  const stock = readNumber(row.stock) ?? 0;
+
   return {
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    price: item.price,
-    discountPrice: item.discountPrice,
-    image: item.image ?? FALLBACK_PRODUCT_IMAGE,
-    images: item.images,
-    rating: item.rating,
-    reviewCount: item.reviewCount,
-    badge: item.badge,
-    categoryId: item.categoryId,
-    category: item.category.name,
-    categoryImage: item.category.image,
-    stock: item.stock,
-    inStock: item.stock > 0 && item.status === "ACTIVE",
-    createdAt: item.createdAt,
+    id: readString(row.id) ?? "",
+    name: readString(row.name) ?? "Untitled Product",
+    description: readString(row.description),
+    price,
+    discountPrice,
+    image: fallbackImage,
+    images,
+    rating: readNumber(row.rating) ?? 0,
+    reviewCount: readNumber(row.reviewCount) ?? 0,
+    badge: readString(row.badge),
+    categoryId: readString(row.categoryId) ?? category.id,
+    category: category.name,
+    categoryImage: category.image,
+    stock,
+    inStock: stock > 0 && status === "ACTIVE",
+    createdAt: readString(row.createdAt) ?? new Date(0).toISOString(),
+    brand: readString(row.brand) ?? undefined,
   };
 }
 
@@ -116,7 +189,7 @@ export async function searchProductsFromApi(
     throw new Error(readApiError(payload, "Failed to search products."));
   }
 
-  const envelope = payload as ApiResponse<ApiProduct[]>;
+  const envelope = payload as ApiResponse<unknown>;
   if (!envelope.success || !Array.isArray(envelope.data)) {
     throw new Error("Products API returned an unexpected response.");
   }
@@ -148,7 +221,7 @@ export async function fetchAllActiveProductsFromApi(): Promise<Product[]> {
       throw new Error(readApiError(payload, "Failed to fetch products."));
     }
 
-    const envelope = payload as ApiResponse<ApiProduct[]>;
+    const envelope = payload as ApiResponse<unknown>;
     if (!envelope.success || !Array.isArray(envelope.data)) {
       throw new Error("Products API returned an unexpected response.");
     }

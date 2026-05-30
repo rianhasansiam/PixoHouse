@@ -43,9 +43,10 @@ export default function CheckoutItemsCard({
           {items.map((item) => {
             const savings =
               (item.originalPrice - item.unitPrice) * item.quantity;
+            const variantParts = [item.color, item.size].filter(Boolean);
             return (
               <li
-                key={item.productId}
+                key={item.variantId || item.productId}
                 className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
               >
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50">
@@ -60,6 +61,11 @@ export default function CheckoutItemsCard({
                   <p className="truncate text-sm font-semibold text-gray-900">
                     {item.name}
                   </p>
+                  {variantParts.length > 0 && (
+                    <p className="mt-0.5 truncate text-[11px] font-medium text-violet-600">
+                      {variantParts.join(" / ")}
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-gray-500">
                     Qty {item.quantity} • BDT{" "}
                     {item.unitPrice.toLocaleString()} each

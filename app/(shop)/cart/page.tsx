@@ -32,6 +32,7 @@ import { computeCartSummary } from "@/features/cart/summary";
 import {
   readLocalCart as readCartFromStorage,
   writeLocalCart,
+  cartItemKey,
 } from "@/features/cart/storage";
 import type { CartItem } from "@/features/cart/api";
 import { asRecord } from "@/features/http/api-envelope";
@@ -39,6 +40,10 @@ import { asRecord } from "@/features/http/api-envelope";
 type SavedItem = {
   id: string;
   productId: string;
+  variantId?: string | null;
+  sku?: string | null;
+  color?: string | null;
+  size?: string | null;
   name: string;
   brand: string;
   image: string;
@@ -90,6 +95,10 @@ function normalizeSavedItem(raw: unknown): SavedItem | null {
   return {
     id: id || `saved:${productId}`,
     productId,
+    variantId: typeof entry.variantId === "string" ? entry.variantId : null,
+    sku: typeof entry.sku === "string" ? entry.sku : null,
+    color: typeof entry.color === "string" ? entry.color : null,
+    size: typeof entry.size === "string" ? entry.size : null,
     name,
     brand: typeof entry.brand === "string" && entry.brand ? entry.brand : "EnterFly",
     image: image || FALLBACK_PRODUCT_IMAGE,
@@ -128,8 +137,12 @@ function writeLocalSaved(items: SavedItem[]) {
 
 function toSavedItem(item: CartItem): SavedItem {
   return {
-    id: `saved:${item.productId}`,
+    id: `saved:${item.variantId ?? item.productId}`,
     productId: item.productId,
+    variantId: item.variantId ?? null,
+    sku: item.sku ?? null,
+    color: item.color ?? null,
+    size: item.size ?? null,
     name: item.name,
     brand: "EnterFly",
     image: item.image ?? FALLBACK_PRODUCT_IMAGE,
@@ -140,6 +153,7 @@ function toSavedItem(item: CartItem): SavedItem {
 }
 
 function toCartViewModel(item: CartItem) {
+  const variantParts = [item.color, item.size].filter(Boolean);
   return {
     id: item.id,
     name: item.name,
@@ -149,6 +163,7 @@ function toCartViewModel(item: CartItem) {
     originalPrice: item.originalPrice > item.unitPrice ? item.originalPrice : undefined,
     quantity: item.quantity,
     maxQuantity: Math.max(1, item.stock),
+    variant: variantParts.length > 0 ? variantParts.join(" / ") : undefined,
     inStock: item.status === "ACTIVE" && item.stock > 0,
     deliveryDays: 4,
     perks: ["Free returns"],
@@ -299,8 +314,9 @@ export default function CartPage() {
       lineTotal: target.unitPrice * safeQuantity,
     };
 
+    const targetKey = cartItemKey(optimistic);
     const localAfterOptimistic = readLocalCart().map((entry) =>
-      entry.productId === optimistic.productId ? optimistic : entry,
+      cartItemKey(entry) === targetKey ? optimistic : entry,
     );
     writeLocalCart(localAfterOptimistic);
     const localItems = readLocalCart();
@@ -337,7 +353,10 @@ export default function CartPage() {
     if (!target) return;
 
     const savedItem = toSavedItem(target);
-    const nextSaved = [savedItem, ...saved.filter((item) => item.productId !== target.productId)];
+    const nextSaved = [
+      savedItem,
+      ...saved.filter((item) => item.id !== savedItem.id),
+    ];
     setSaved(nextSaved);
     writeLocalSaved(nextSaved);
 
@@ -358,7 +377,7 @@ export default function CartPage() {
       dispatch(setCartError(null));
 
       try {
-        await addToCartOnServer(target.productId, 1);
+        await addToCartOnServer(target.productId, 1, target.variantId);
         const snapshot = await fetchServerCartSnapshot();
         dispatch(setCartData(snapshot));
         writeLocalCart(snapshot.items);
@@ -375,7 +394,10 @@ export default function CartPage() {
     }
 
     const localCartBefore = readLocalCart();
-    const existing = localCartBefore.find((item) => item.productId === target.productId);
+    const savedKey = cartItemKey(target);
+    const existing = localCartBefore.find(
+      (item) => cartItemKey(item) === savedKey,
+    );
     const nextItem: CartItem = existing
       ? {
           ...existing,
@@ -383,8 +405,12 @@ export default function CartPage() {
           lineTotal: existing.unitPrice * (existing.quantity + 1),
         }
       : {
-          id: `local:${target.productId}`,
+          id: `local:${target.variantId ?? target.productId}`,
           productId: target.productId,
+          variantId: target.variantId ?? null,
+          sku: target.sku ?? null,
+          color: target.color ?? null,
+          size: target.size ?? null,
           name: target.name,
           image: target.image,
           quantity: 1,
@@ -397,7 +423,7 @@ export default function CartPage() {
 
     const localCartAfter = existing
       ? localCartBefore.map((item) =>
-          item.productId === nextItem.productId ? nextItem : item,
+          cartItemKey(item) === savedKey ? nextItem : item,
         )
       : [nextItem, ...localCartBefore];
 

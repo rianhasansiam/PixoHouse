@@ -253,6 +253,11 @@ export default function CartTab() {
                   >
                     {item.name}
                   </Link>
+                  {[item.color, item.size].filter(Boolean).length > 0 && (
+                    <p className="mt-0.5 text-[11px] font-medium text-violet-600">
+                      {[item.color, item.size].filter(Boolean).join(" / ")}
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-gray-500">
                     {formatBdt(item.unitPrice)}
                     {item.originalPrice > item.unitPrice && (

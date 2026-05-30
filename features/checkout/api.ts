@@ -5,11 +5,16 @@ export type CheckoutPaymentMethod = "CASH_ON_DELIVERY" | "ONLINE";
 
 export type CheckoutItemInput = {
   productId: string;
+  variantId?: string;
   quantity: number;
 };
 
 export type CheckoutItemPriced = {
   productId: string;
+  variantId: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
   name: string;
   image: string | null;
   quantity: number;

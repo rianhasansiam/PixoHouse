@@ -382,32 +382,40 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                 </span>
               </header>
               <ul className="divide-y divide-violet-100">
-                {order.items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.productImage || FALLBACK_IMAGE}
-                        alt={item.productName}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {item.productName}
+                {order.items.map((item) => {
+                  const variantParts = [item.color, item.size].filter(Boolean);
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.productImage || FALLBACK_IMAGE}
+                          alt={item.productName}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {item.productName}
+                        </p>
+                        {variantParts.length > 0 && (
+                          <p className="mt-0.5 truncate text-[11px] font-medium text-violet-600">
+                            {variantParts.join(" / ")}
+                          </p>
+                        )}
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          Qty {item.quantity} · BDT {item.unitPrice.toLocaleString()} each
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-gray-900">
+                        BDT {item.totalPrice.toLocaleString()}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Qty {item.quantity} · BDT {item.unitPrice.toLocaleString()} each
-                      </p>
-                    </div>
-                    <p className="text-sm font-bold text-gray-900">
-                      BDT {item.totalPrice.toLocaleString()}
-                    </p>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           </div>

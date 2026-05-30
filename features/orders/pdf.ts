@@ -128,12 +128,18 @@ function drawItemsTable(doc: Doc, startY: number, order: OrderDetail): number {
   autoTable(doc, {
     startY: startY + 3,
     head: [["Product", "Qty", "Unit", "Line total"]],
-    body: order.items.map((item) => [
-      item.productName,
-      String(item.quantity),
-      formatBdt(item.unitPrice),
-      formatBdt(item.totalPrice),
-    ]),
+    body: order.items.map((item) => {
+      const variantParts = [item.color, item.size].filter(Boolean);
+      const productCell = variantParts.length > 0
+        ? `${item.productName}\n(${variantParts.join(" / ")})`
+        : item.productName;
+      return [
+        productCell,
+        String(item.quantity),
+        formatBdt(item.unitPrice),
+        formatBdt(item.totalPrice),
+      ];
+    }),
     theme: "striped",
     headStyles: {
       fillColor: COLORS.brandFrom,

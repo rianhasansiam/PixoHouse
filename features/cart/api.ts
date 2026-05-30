@@ -5,6 +5,10 @@ export type CartStatus = "ACTIVE" | "INACTIVE";
 export type CartItem = {
   id: string;
   productId: string;
+  variantId?: string | null;
+  sku?: string | null;
+  color?: string | null;
+  size?: string | null;
   name: string;
   image: string | null;
   quantity: number;
@@ -46,11 +50,16 @@ export async function fetchServerCartSnapshot(): Promise<CartSnapshot> {
 export async function createCartItemOnServer(
   productId: string,
   quantity = 1,
+  variantId?: string | null,
 ): Promise<CartItem> {
   const response = await fetch("/api/cart", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ productId, quantity }),
+    body: JSON.stringify({
+      productId,
+      quantity,
+      ...(variantId ? { variantId } : {}),
+    }),
     cache: "no-store",
   });
 
@@ -60,8 +69,9 @@ export async function createCartItemOnServer(
 export async function addToCartOnServer(
   productId: string,
   quantity = 1,
+  variantId?: string | null,
 ): Promise<CartItem> {
-  return createCartItemOnServer(productId, quantity);
+  return createCartItemOnServer(productId, quantity, variantId);
 }
 
 export async function syncCartToServer(localItems: CartItem[]): Promise<CartSnapshot> {
@@ -72,6 +82,7 @@ export async function syncCartToServer(localItems: CartItem[]): Promise<CartSnap
       items: localItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
+        ...(item.variantId ? { variantId: item.variantId } : {}),
       })),
     }),
     cache: "no-store",

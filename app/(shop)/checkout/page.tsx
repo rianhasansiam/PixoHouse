@@ -46,7 +46,8 @@ type CheckoutSource =
 
 function parseBuyNowParam(raw: string | null): CheckoutItemInput[] | null {
   if (!raw) return null;
-  // Format: "<productId>:<quantity>" or comma-separated list of those.
+  // Format: "<productId>:<quantity>[:<variantId>]" or a comma-separated
+  // list of those.
   const parts = raw
     .split(",")
     .map((entry) => entry.trim())
@@ -54,10 +55,14 @@ function parseBuyNowParam(raw: string | null): CheckoutItemInput[] | null {
 
   const items: CheckoutItemInput[] = [];
   for (const part of parts) {
-    const [productId, qtyRaw] = part.split(":");
+    const [productId, qtyRaw, variantId] = part.split(":");
     if (!productId) continue;
     const quantity = Math.max(1, Math.round(Number(qtyRaw ?? 1) || 1));
-    items.push({ productId: productId.trim(), quantity });
+    items.push({
+      productId: productId.trim(),
+      quantity,
+      ...(variantId ? { variantId: variantId.trim() } : {}),
+    });
   }
   return items.length > 0 ? items : null;
 }
