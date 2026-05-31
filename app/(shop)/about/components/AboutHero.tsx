@@ -5,7 +5,7 @@ import { ChevronRight, Sparkles, MapPin } from "lucide-react";
 
 export default function AboutHero() {
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-purple-600 to-indigo-700 px-6 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-white shadow-xl">
+    <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-600 via-violet-500 to-indigo-500 px-6 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-white shadow-xl">
       {/* Decorative blobs */}
       <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-pink-400/20 blur-3xl" />

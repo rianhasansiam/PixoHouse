@@ -21,7 +21,7 @@ import type {
 
 const reviewInclude = {
   user: { select: { id: true, name: true, image: true } },
-  product: { select: { id: true, name: true, slug: true } },
+  product: { select: { id: true, name: true, slug: true, productCode: true } },
 } satisfies Prisma.ReviewInclude;
 
 type ReviewWithRelations = Prisma.ReviewGetPayload<{
@@ -36,7 +36,7 @@ type ReviewWithRelations = Prisma.ReviewGetPayload<{
  */
 const adminReviewInclude = {
   user: { select: { id: true, name: true, image: true, phone: true, email: true } },
-  product: { select: { id: true, name: true, slug: true } },
+  product: { select: { id: true, name: true, slug: true, productCode: true } },
 } satisfies Prisma.ReviewInclude;
 
 type AdminReviewWithRelations = Prisma.ReviewGetPayload<{
@@ -56,7 +56,7 @@ export type SerializedReview = {
   verified: boolean;
   createdAt: string;
   updatedAt: string;
-  product: { id: string; name: string; slug: string } | null;
+  product: { id: string; name: string; slug: string; productCode: string } | null;
 };
 
 /**
@@ -89,6 +89,7 @@ export function serializeReview(review: ReviewWithRelations): SerializedReview {
           id: review.product.id,
           name: review.product.name,
           slug: review.product.slug,
+          productCode: review.product.productCode,
         }
       : null,
   };

@@ -30,6 +30,7 @@ type HomeCategoryBanner = {
 type HomeCategory = {
   id: string;
   name: string;
+  slug: string;
   image: string | null;
   products: HomeCategoryProduct[];
   categoryBanner: HomeCategoryBanner | null;
@@ -54,6 +55,7 @@ const getCachedHomeCategories = unstable_cache(
       select: {
         id: true,
         name: true,
+        slug: true,
         image: true,
         products: {
           where: { status: "ACTIVE" },
@@ -95,6 +97,7 @@ const getCachedHomeCategories = unstable_cache(
       .map((category) => ({
         id: category.id,
         name: category.name,
+        slug: category.slug,
         image: category.image,
         products: category.products.map((product) => {
           const variant = product.variants[0];

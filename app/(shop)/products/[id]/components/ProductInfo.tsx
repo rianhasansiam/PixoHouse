@@ -32,6 +32,7 @@ type ProductInfoProps = {
   name: string
   specs: ProductSpec[]
   deliveryTime?: string
+  productCode?: string | null
 }
 
 type IconName =
@@ -76,6 +77,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
   name,
   specs,
   deliveryTime = '2 Hours',
+  productCode,
 }) => {
   return (
     <div className="space-y-6">
@@ -84,6 +86,11 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
           {name}
         </h1>
+        {productCode && (
+          <p className="mt-1 font-mono text-xs text-gray-400">
+            Product Code: {productCode}
+          </p>
+        )}
       </div>
 
       {/* Specs List */}

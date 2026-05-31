@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 
 import ProductCard from "@/components/product/ProductCard";
@@ -36,6 +37,7 @@ type HomeCategoryBanner = {
 type HomeCategory = {
   id: string;
   name: string;
+  slug: string;
   image: string | null;
   products: HomeCategoryProduct[];
   categoryBanner: HomeCategoryBanner | null;
@@ -74,7 +76,12 @@ export default function Categories({ initialCategories }: CategoriesProps) {
             <div className="flex items-center gap-2.5">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 sm:text-xl">
-                  {category.name}
+                  <Link
+                    href={`/categories/${category.slug}`}
+                    className="transition-colors hover:text-violet-700"
+                  >
+                    {category.name}
+                  </Link>
                 </h2>
                 <p className="hidden text-xs text-gray-500 sm:block">
                   {category.products.length} products available
@@ -82,10 +89,13 @@ export default function Categories({ initialCategories }: CategoriesProps) {
               </div>
             </div>
 
-            <button className="group flex items-center gap-1 text-sm font-semibold text-violet-600 transition-colors hover:text-violet-800">
+            <Link
+              href={`/categories/${category.slug}`}
+              className="group flex items-center gap-1 text-sm font-semibold text-violet-600 transition-colors hover:text-violet-800"
+            >
               View All
               <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
+            </Link>
           </div>
 
           <div className="mb-4 h-0.5 rounded-full bg-linear-to-r from-violet-500 via-purple-400 to-transparent" />
@@ -123,9 +133,12 @@ export default function Categories({ initialCategories }: CategoriesProps) {
           </div>
 
           <div className="mt-5 text-center">
-            <button className="rounded-full bg-linear-to-r from-violet-600 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:from-violet-700 hover:to-purple-700 hover:shadow-lg">
+            <Link
+              href={`/categories/${category.slug}`}
+              className="inline-block rounded-full bg-linear-to-r from-violet-500 to-purple-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:from-violet-600 hover:to-purple-600 hover:shadow-lg"
+            >
               Load More Products
-            </button>
+            </Link>
           </div>
 
           {index < categories.length - 1 && (

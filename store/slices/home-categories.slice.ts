@@ -26,6 +26,7 @@ type HomeCategoryBanner = {
 type HomeCategory = {
   id: string;
   name: string;
+  slug: string;
   image: string | null;
   products: HomeCategoryProduct[];
   categoryBanner: HomeCategoryBanner | null;

@@ -4,6 +4,7 @@ type ProductStatus = "ACTIVE" | "INACTIVE";
 
 type AdminProduct = {
   id: string;
+  productCode: string;
   name: string;
   description: string | null;
   price: number;

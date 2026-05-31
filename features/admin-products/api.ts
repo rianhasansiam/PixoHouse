@@ -4,6 +4,7 @@ export type ProductStatus = "ACTIVE" | "INACTIVE";
 
 export type AdminProduct = {
   id: string;
+  productCode: string;
   name: string;
   description: string | null;
   price: number;
@@ -153,6 +154,7 @@ export function parseProductsPayload(payload: unknown): AdminProduct[] {
 
     return {
       id: readString(row.id) ?? "",
+      productCode: readString(row.productCode) ?? "",
       name: readString(row.name) ?? "Untitled Product",
       description: readString(row.description),
       price,

@@ -107,6 +107,7 @@ export default function AddReviewForm({
             </option>
             {products.map((product) => (
               <option key={product.id} value={product.id}>
+                {product.productCode ? `${product.productCode} — ` : ""}
                 {product.name}
               </option>
             ))}

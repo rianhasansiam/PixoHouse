@@ -5,7 +5,8 @@ import {
   User,
   ShoppingCart,
   Heart,
-  MapPin,
+  Phone,
+  Shield,
   Store,
   Info,
   LogIn,
@@ -46,8 +47,8 @@ type MenuItem = {
 const MENU_ITEMS: readonly MenuItem[] = [
   { href: "/products", label: "All Products", icon: Store },
   { href: "/about", label: "About", icon: Info },
-  { href: "/contact", label: "Contact", icon: Info },
-  { href: "/admin", label: "Admin", icon: Info, adminOnly: true },
+  { href: "/contact", label: "Contact", icon: Phone },
+  { href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ] as const;
 
 /** Grace period (ms) so the cursor can travel from trigger to dropdown content. */
@@ -112,16 +113,17 @@ export default function Navbar() {
             href="/"
             className="group flex shrink-0 items-center gap-2 transition-transform duration-300 hover:scale-[1.02]"
           >
-            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-violet-600 bg-white transition-transform duration-300 group-hover:rotate-6">
-              <MapPin className="h-5 w-5 text-violet-600" />
-            </div>
+           
             <div className="flex select-none flex-col leading-tight">
-              <h1 className="whitespace-nowrap bg-linear-to-r from-violet-600 to-indigo-700 bg-clip-text text-base font-extrabold text-transparent sm:text-lg md:text-xl">
-                EnterFly
-              </h1>
-              <p className="-mt-0.5 hidden whitespace-nowrap text-[9px] font-medium tracking-wide text-gray-800 sm:block sm:text-xs">
+              <Image
+                src="/logo/logo.png"
+                alt="EnterFly Logo"
+                width={80}
+                height={80}
+              />
+              {/* <p className="-mt-0.5 hidden whitespace-nowrap text-[9px] font-medium tracking-wide text-gray-800 sm:block sm:text-xs">
                 Premium Local Shopping
-              </p>
+              </p> */}
             </div>
           </Link>
         </div>

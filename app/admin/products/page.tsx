@@ -118,7 +118,7 @@ export default function AdminProductsPage() {
       const matchQuery =
         !q ||
         product.name.toLowerCase().includes(q) ||
-        product.id.toLowerCase().includes(q) ||
+        product.productCode.toLowerCase().includes(q) ||
         product.category.name.toLowerCase().includes(q) ||
         (product.description ?? "").toLowerCase().includes(q);
 

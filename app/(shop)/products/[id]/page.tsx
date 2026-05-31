@@ -6,9 +6,14 @@ import {
   getActivePromoBanners,
 } from "@/lib/services/banner.service";
 import {
+  getActiveProductById,
   getProductById,
   listProducts,
 } from "@/lib/services/product.service";
+import JsonLd from "@/components/seo/JsonLd";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo/json-ld";
+import { siteConfig } from "@/lib/seo/site";
 
 import Breadcrumbs from "./components/Breadcrumbs";
 import DealsCarousel from "./components/DealsCarousel";
@@ -53,30 +58,36 @@ function discountPercent(price: number, originalPrice: number) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProductById(id);
+  // Only ACTIVE products get rich, indexable metadata. Inactive or
+  // missing products are marked noindex so they never surface in search.
+  const product = await getActiveProductById(id);
 
   if (!product) {
-    return {
-      title: "Product Not Found | EnterFly",
+    return buildMetadata({
+      title: "Product Not Found",
       description: "The requested product could not be found.",
-    };
+      path: `/products/${id}`,
+      index: false,
+    });
   }
 
-  const description = (product.description ?? product.name).slice(0, 160);
-  const ogImages = [product.images[0]?.url ?? FALLBACK_PRODUCT_IMAGE];
+  const price = effectivePrice(product);
+  const description =
+    product.description?.trim() ||
+    `Buy ${product.name} in ${product.category.name} at ${siteConfig.name}. Price BDT ${price.toLocaleString()}. Secure checkout and fast delivery.`;
 
-  return {
-    title: `${product.name} | EnterFly - Local Marketplace`,
+  return buildMetadata({
+    title: product.name,
     description,
-    keywords: [product.name, product.category.name, "local shopping", "EnterFly"],
-    openGraph: {
-      title: `${product.name} | EnterFly`,
-      description,
-      type: "website",
-      images: ogImages,
-    },
-    robots: { index: true, follow: true },
-  };
+    path: `/products/${product.id}`,
+    image: product.images[0]?.url ?? null,
+    keywords: [
+      product.name,
+      product.category.name,
+      "buy online",
+      siteConfig.name,
+    ],
+  });
 }
 
 export default async function ProductDetailsPage({ params }: Props) {
@@ -131,8 +142,44 @@ export default async function ProductDetailsPage({ params }: Props) {
     { label: product.name },
   ];
 
+  // Structured data: only emit for publicly visible (ACTIVE) products so
+  // crawlers never see schema for hidden/soft-deleted items. SKU comes
+  // from the primary variant when present; brand/ratings are omitted
+  // because EnterFly has no real data for them yet.
+  const isPublic = product.status === "ACTIVE";
+  const primarySku = product.variants[0]?.sku ?? null;
+  const productSchema = isPublic
+    ? productJsonLd({
+        name: product.name,
+        description: product.description,
+        images:
+          product.images.length > 0
+            ? product.images.map((img) => img.url)
+            : [FALLBACK_PRODUCT_IMAGE],
+        path: `/products/${product.id}`,
+        price: effectivePrice(product),
+        inStock: product.variants.some((v) => v.stock > 0),
+        category: product.category.name,
+        sku: primarySku,
+      })
+    : null;
+  const breadcrumbSchema = isPublic
+    ? breadcrumbJsonLd([
+        { name: "Home", path: "/" },
+        { name: "Products", path: "/products" },
+        {
+          name: product.category.name,
+          path: `/categories/${product.category.slug}`,
+        },
+        { name: product.name, path: `/products/${product.id}` },
+      ])
+    : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {productSchema && breadcrumbSchema && (
+        <JsonLd data={[productSchema, breadcrumbSchema]} />
+      )}
       <div className="max-w-7xl mx-auto px-3 py-6 sm:px-4 lg:px-6">
         <Breadcrumbs items={breadcrumbItems} />
 
@@ -149,6 +196,7 @@ export default async function ProductDetailsPage({ params }: Props) {
                 name={product.name}
                 specs={[]}
                 deliveryTime="2 Hours"
+                productCode={product.productCode}
               />
 
               <ProductActions

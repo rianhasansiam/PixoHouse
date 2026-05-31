@@ -4,7 +4,7 @@ import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  IndianRupee,
+ 
   ShoppingBag,
   Undo2,
   Users,
@@ -44,7 +44,7 @@ type CardConfig = {
   label: string;
   hint: string;
   accent: Accent;
-  icon: LucideIcon;
+  icon: LucideIcon | string;
   format: (value: number) => string;
   /**
    * Some metrics (e.g. cancellations) are healthier when going down.
@@ -68,7 +68,7 @@ const CARDS: readonly CardConfig[] = [
     label: "Revenue (this month)",
     hint: "vs last month",
     accent: "violet",
-    icon: IndianRupee,
+    icon: "",
     format: formatBdt,
     positiveTrend: "up",
   },
@@ -177,7 +177,11 @@ function StatCard({ card, stat, loading }: StatCardProps) {
           )}
         </div>
         <div className={cn("rounded-xl p-2.5", styles.tile)}>
-          <Icon className={cn("h-5 w-5", styles.icon)} />
+          {typeof Icon === "string" ? (
+            <span className={cn("text-sm font-semibold", styles.icon)}>{Icon}</span>
+          ) : (
+            <Icon className={cn("h-5 w-5", styles.icon)} />
+          )}
         </div>
       </div>
 

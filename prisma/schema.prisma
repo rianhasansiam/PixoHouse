@@ -78,6 +78,9 @@ enum CategoryStatus {
 
 model Product {
   id          String        @id @default(cuid())
+  // Human-readable, system-generated identifier (e.g. "PRD-00001").
+  // Used across the UI to reference a product without exposing the cuid.
+  productCode String        @unique
   name        String
   slug        String        @unique
   description String?

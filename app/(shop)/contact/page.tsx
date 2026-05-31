@@ -1,9 +1,20 @@
+import type { Metadata } from "next";
+
 import ContactHero from "./components/ContactHero";
 import ContactInfoCards from "./components/ContactInfoCards";
 import ContactForm from "./components/ContactForm";
 import ContactMap from "./components/ContactMap";
 import FAQSection from "./components/FAQSection";
 import SocialConnect from "./components/SocialConnect";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { siteConfig } from "@/lib/seo/site";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Contact Us",
+  description: `Get in touch with ${siteConfig.name}. Questions about orders, products, or support? Reach our team and we'll help you out.`,
+  path: "/contact",
+  keywords: ["contact EnterFly", "customer support", "help", siteConfig.name],
+});
 
 export default function ContactPage() {
   return (

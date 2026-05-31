@@ -18,7 +18,7 @@ import type {
 
 /** Fields the API returns alongside the product. */
 const productInclude = {
-  category: { select: { id: true, name: true, image: true } },
+  category: { select: { id: true, name: true, slug: true, image: true } },
   images: { orderBy: { position: "asc" } },
   variants: { orderBy: { createdAt: "asc" } },
 } satisfies Prisma.ProductInclude;
@@ -55,6 +55,7 @@ export function serializeProduct(product: ProductWithCategory) {
 
   return {
     id: product.id,
+    productCode: product.productCode,
     name: product.name,
     slug: product.slug,
     description: product.description,
@@ -106,6 +107,38 @@ async function uniqueSlug(name: string): Promise<string> {
   });
   if (!existing) return base;
   return `${base}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Prefix + zero-padding width for human-readable product codes. */
+const PRODUCT_CODE_PREFIX = "PRD-";
+const PRODUCT_CODE_PAD = 5;
+
+/** Format a sequence number into a product code, e.g. 42 -> "PRD-00042". */
+function formatProductCode(sequence: number): string {
+  return `${PRODUCT_CODE_PREFIX}${String(sequence).padStart(PRODUCT_CODE_PAD, "0")}`;
+}
+
+/**
+ * Generate the next human-readable product code (e.g. "PRD-00042").
+ *
+ * Codes are sequential and easy to read/say over the phone. We derive the
+ * next number from the highest existing code rather than a global counter
+ * so it stays correct even if rows were imported out of band. The unique
+ * constraint on `productCode` is the real guard; `createProduct` retries
+ * on the rare collision from two concurrent creates.
+ */
+async function nextProductCode(): Promise<string> {
+  const last = await prisma.product.findFirst({
+    where: { productCode: { startsWith: PRODUCT_CODE_PREFIX } },
+    orderBy: { productCode: "desc" },
+    select: { productCode: true },
+  });
+
+  const lastSequence = last
+    ? Number.parseInt(last.productCode.slice(PRODUCT_CODE_PREFIX.length), 10)
+    : 0;
+  const next = Number.isFinite(lastSequence) ? lastSequence + 1 : 1;
+  return formatProductCode(next);
 }
 
 /** Build the Prisma `where` clause from validated query params. */
@@ -213,6 +246,20 @@ export function getProductById(id: string) {
   });
 }
 
+/**
+ * Fetch a product only when it is publicly visible (status ACTIVE).
+ *
+ * Used by SEO surfaces (metadata, JSON-LD, sitemap) so draft/inactive/
+ * soft-deleted products are never exposed to crawlers. Returns null for
+ * missing OR inactive products.
+ */
+export function getActiveProductById(id: string) {
+  return prisma.product.findFirst({
+    where: { id, status: "ACTIVE" },
+    include: productInclude,
+  });
+}
+
 export async function createProduct(input: CreateProductInput) {
   // The product holds catalog data; price/stock live on a default
   // variant and images become ProductImage rows. We keep the legacy
@@ -225,30 +272,50 @@ export async function createProduct(input: CreateProductInput) {
   // De-dupe while preserving order.
   const uniqueImages = Array.from(new Set(imageUrls));
 
-  return prisma.product.create({
-    data: {
-      name: input.name,
-      slug,
-      description: input.description ?? null,
-      status: input.status,
-      categoryId: input.categoryId,
-      variants: {
-        create: {
-          sku: `SKU-${slug}-${Math.random().toString(36).slice(2, 8)}`,
-          price: input.price,
-          salePrice: input.discountPrice ?? null,
-          stock: input.stock,
+  // Generate a human-readable product code. The unique constraint is the
+  // real guard, so on the rare concurrent-create collision (P2002) we
+  // recompute the next code and retry a few times before giving up.
+  const MAX_ATTEMPTS = 5;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    const productCode = await nextProductCode();
+    try {
+      return await prisma.product.create({
+        data: {
+          productCode,
+          name: input.name,
+          slug,
+          description: input.description ?? null,
+          status: input.status,
+          categoryId: input.categoryId,
+          variants: {
+            create: {
+              sku: `SKU-${slug}-${Math.random().toString(36).slice(2, 8)}`,
+              price: input.price,
+              salePrice: input.discountPrice ?? null,
+              stock: input.stock,
+            },
+          },
+          images: {
+            create: uniqueImages.map((url, index) => ({
+              url,
+              position: index,
+            })),
+          },
         },
-      },
-      images: {
-        create: uniqueImages.map((url, index) => ({
-          url,
-          position: index,
-        })),
-      },
-    },
-    include: productInclude,
-  });
+        include: productInclude,
+      });
+    } catch (error) {
+      const isCodeCollision =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        (error.meta?.target as string[] | undefined)?.includes("productCode");
+      if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) continue;
+      throw error;
+    }
+  }
+
+  // Unreachable in practice: the loop either returns or throws above.
+  throw new Error("Failed to generate a unique product code.");
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput) {

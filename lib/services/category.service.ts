@@ -150,6 +150,88 @@ export async function getCategoryById(
   return { ...rest, productCount: _count.products };
 }
 
+/**
+ * Public category landing data, looked up by slug.
+ *
+ * Returns the ACTIVE category plus its ACTIVE products (primary variant
+ * price + first image flattened for cards). Returns null when the
+ * category is missing or INACTIVE so SEO/landing surfaces never expose
+ * hidden categories. Cached + tagged like the rest of the category
+ * reads so admin edits bust it on the next request.
+ */
+export type PublicCategoryProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  discountPrice: number | null;
+  image: string | null;
+  inStock: boolean;
+};
+
+export type PublicCategory = Category & {
+  products: PublicCategoryProduct[];
+};
+
+async function loadActiveCategoryBySlug(
+  slug: string,
+): Promise<PublicCategory | null> {
+  const row = await prisma.category.findFirst({
+    where: { slug, status: "ACTIVE" },
+    select: {
+      ...categorySelect,
+      products: {
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          images: { orderBy: { position: "asc" }, take: 1, select: { url: true } },
+          variants: {
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { price: true, salePrice: true, stock: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!row) return null;
+
+  const { products, ...category } = row;
+
+  return {
+    ...category,
+    products: products.map((product) => {
+      const variant = product.variants[0];
+      const price = variant ? variant.price.toNumber() : 0;
+      const sale = variant?.salePrice?.toNumber() ?? null;
+      const discountPrice = sale != null && sale < price ? sale : null;
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price,
+        discountPrice,
+        image: product.images[0]?.url ?? null,
+        inStock: (variant?.stock ?? 0) > 0,
+      };
+    }),
+  };
+}
+
+const getCachedCategoryBySlug = unstable_cache(
+  (slug: string) => loadActiveCategoryBySlug(slug),
+  ["category-by-slug"],
+  { revalidate: 300, tags: ["categories"] },
+);
+
+export function getActiveCategoryBySlug(slug: string) {
+  return getCachedCategoryBySlug(slug);
+}
+
 /** Quick existence check without pulling the row. */
 export function categoryHasProducts(id: string): Promise<boolean> {
   return prisma.product

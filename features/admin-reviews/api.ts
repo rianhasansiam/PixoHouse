@@ -17,7 +17,7 @@ export type AdminReviewRow = {
   verified: boolean;
   createdAt: string;
   updatedAt: string;
-  product: { id: string; name: string; slug: string } | null;
+  product: { id: string; name: string; slug: string; productCode: string } | null;
 };
 
 export type ApiMeta = {
@@ -59,6 +59,7 @@ function parseProduct(value: unknown): AdminReviewRow["product"] {
     id: asString(record.id),
     name: asString(record.name),
     slug: asString(record.slug),
+    productCode: asString(record.productCode),
   };
 }
 

@@ -74,8 +74,8 @@ export default function ProductsTable({
                         <p className="truncate font-semibold text-gray-900">
                           {product.name}
                         </p>
-                        <p className="truncate text-xs text-gray-500">
-                          {product.id}
+                        <p className="truncate font-mono text-xs text-violet-600">
+                          {product.productCode}
                         </p>
                       </div>
                     </div>

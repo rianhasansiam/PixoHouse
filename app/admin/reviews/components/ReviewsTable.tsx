@@ -76,8 +76,8 @@ export default function ReviewsTable({
                     <p className="font-semibold text-gray-900">
                       {review.product?.name ?? "Deleted product"}
                     </p>
-                    <p className="mt-1 truncate text-xs text-gray-400">
-                      {review.productId}
+                    <p className="mt-1 truncate font-mono text-xs text-violet-600">
+                      {review.product?.productCode ?? "—"}
                     </p>
                   </td>
                   <td className="px-4 py-3">

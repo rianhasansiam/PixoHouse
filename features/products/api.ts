@@ -2,6 +2,7 @@ import { readApiError } from "@/features/http/api-envelope";
 
 export type Product = {
   id: string;
+  productCode: string;
   name: string;
   description: string | null;
   price: number;
@@ -22,6 +23,7 @@ export type Product = {
 
 export type ApiProduct = {
   id: string;
+  productCode: string;
   name: string;
   description: string | null;
   price: number;
@@ -134,6 +136,7 @@ function mapApiProduct(item: unknown): Product {
 
   return {
     id: readString(row.id) ?? "",
+    productCode: readString(row.productCode) ?? "",
     name: readString(row.name) ?? "Untitled Product",
     description: readString(row.description),
     price,

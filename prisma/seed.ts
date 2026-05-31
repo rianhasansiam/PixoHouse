@@ -322,6 +322,11 @@ async function seedCatalog() {
   const variantsBySku = new Map<string, { id: string; productId: string }>();
   const categoryBySlug = new Map<string, { id: string }>();
 
+  // Sequential, human-readable product code (PRD-00001, PRD-00002, ...).
+  let productSeq = 0;
+  const nextProductCode = () =>
+    `PRD-${String((productSeq += 1)).padStart(5, "0")}`;
+
   for (const cat of CATEGORIES) {
     const category = await prisma.category.create({
       data: {
@@ -337,6 +342,7 @@ async function seedCatalog() {
     for (const prod of cat.products) {
       const product = await prisma.product.create({
         data: {
+          productCode: nextProductCode(),
           name: prod.name,
           slug: prod.slug,
           description: prod.description,

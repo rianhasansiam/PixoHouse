@@ -7,6 +7,7 @@ import {
   Tag,
   Zap,
   Gift,
+  
   TrendingUp,
   Percent,
   type LucideIcon,
@@ -44,7 +45,17 @@ function resolveIcon(name: string, fallback: LucideIcon): LucideIcon {
   return ICON_MAP[name] ?? fallback;
 }
 
+
+
+
+
+
+
 const TopBannerClient = ({ slides }: { slides: TopBannerSlide[] }) => {
+
+
+
+
   const [isVisible, setIsVisible] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -73,10 +84,16 @@ const TopBannerClient = ({ slides }: { slides: TopBannerSlide[] }) => {
     () => (currentSale ? resolveIcon(currentSale.icon, Tag) : Tag),
     [currentSale],
   );
+
+
+
   const CurrentTagIcon = useMemo(
     () => (currentSale ? resolveIcon(currentSale.tagIcon, Sparkles) : Sparkles),
     [currentSale],
   );
+
+
+
 
   if (!isVisible || !currentSale) return null;
 
@@ -92,10 +109,7 @@ const TopBannerClient = ({ slides }: { slides: TopBannerSlide[] }) => {
       {/* Main Content */}
       <div className="relative container mx-auto px-1 sm:px-4 py-2">
         <div className="flex items-center justify-between gap-1 sm:gap-2 md:gap-4">
-          {/* Left Icon */}
-          <div className="hidden sm:flex items-center justify-center w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg shrink-0">
-            <Sparkles className="w-5 h-5 text-white animate-pulse" />
-          </div>
+          
 
           {/* Animated Text */}
           <div className="grow flex items-center justify-center min-w-0">

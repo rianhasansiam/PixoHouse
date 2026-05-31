@@ -3,6 +3,7 @@
 import React from "react";
 import { MapPin } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 // Demo Data
 const quickLinks = [
@@ -36,10 +37,14 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="col-span-2 sm:col-span-2 md:col-span-1 space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white border-2 border-violet-600 flex items-center justify-center">
-                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-black text-violet-600">NearByDeals</h3>
+               <Image
+                              src="/logo/logo.png"
+                              alt="EnterFly Logo"
+                              width={120}
+                              height={100}
+                            />
+
+              
             </div>
             <p className="text-gray-700 text-xs sm:text-sm leading-relaxed">
               Discover premium verified stores within 50km. Real-time deals, clean UI, and a superior local shopping experience.
@@ -82,18 +87,10 @@ const Footer = () => {
 
           {/* Newsletter */}
           <div className="col-span-2 sm:col-span-2 md:col-span-1">
-            <h4 className="text-base sm:text-lg font-black text-violet-600 mb-3 sm:mb-4">Newsletter</h4>
-            <p className="text-gray-700 text-xs sm:text-sm mb-2 sm:mb-3">
-              Get Premium delas nad updates
-            </p>
-            <input
-              type="email"
-              placeholder="Your mail"
-              className="w-full px-3 sm:px-4 py-2 bg-white border-2 border-violet-600 rounded-full text-gray-700 placeholder-gray-500 focus:ring-2 focus:ring-violet-400 outline-none text-xs sm:text-sm mb-3 sm:mb-4"
-            />
+          
             
             {/* Keep In Touch */}
-            <div className="mt-4 sm:mt-6">
+           
               <h5 className="text-sm sm:text-base font-black text-gray-800 mb-2 sm:mb-3">Keep In Touch</h5>
               <div className="flex gap-2">
                 <Link
@@ -136,7 +133,7 @@ const Footer = () => {
             </div>
           </div>
         </div>
-      </div>
+  
     </footer>
   );
 };
