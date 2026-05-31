@@ -11,6 +11,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import ColorBadge from "@/components/ui/ColorBadge";
+
 import QuantityStepper from "./QuantityStepper";
 
 type CartItem = {
@@ -22,7 +24,8 @@ type CartItem = {
   originalPrice?: number;
   quantity: number;
   maxQuantity: number;
-  variant?: string;
+  color?: string;
+  size?: string;
   inStock: boolean;
   deliveryDays?: number;
   perks?: string[];
@@ -87,8 +90,8 @@ export default function CartItemCard({
               >
                 {item.name}
               </Link>
-              {item.variant && (
-                <p className="mt-1 text-xs text-gray-500">{item.variant}</p>
+              {(item.color || item.size) && (
+                <ColorBadge color={item.color} size={item.size} className="mt-1" />
               )}
             </div>
 

@@ -23,6 +23,7 @@ import {
   clearOrderSnapshot,
   readOrderSnapshot,
 } from "@/features/orders/storage";
+import ColorBadge from "@/components/ui/ColorBadge";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
@@ -383,7 +384,6 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
               </header>
               <ul className="divide-y divide-violet-100">
                 {order.items.map((item) => {
-                  const variantParts = [item.color, item.size].filter(Boolean);
                   return (
                     <li
                       key={item.id}
@@ -401,11 +401,11 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                         <p className="truncate text-sm font-semibold text-gray-900">
                           {item.productName}
                         </p>
-                        {variantParts.length > 0 && (
-                          <p className="mt-0.5 truncate text-[11px] font-medium text-violet-600">
-                            {variantParts.join(" / ")}
-                          </p>
-                        )}
+                        <ColorBadge
+                          color={item.color}
+                          size={item.size}
+                          className="mt-0.5"
+                        />
                         <p className="mt-0.5 text-xs text-gray-500">
                           Qty {item.quantity} · BDT {item.unitPrice.toLocaleString()} each
                         </p>

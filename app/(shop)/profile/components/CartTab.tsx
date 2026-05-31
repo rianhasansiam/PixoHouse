@@ -30,6 +30,7 @@ import {
   setCartMode,
 } from "@/store/slices/cart.slice";
 import type { AppDispatch, RootState } from "@/store";
+import ColorBadge from "@/components/ui/ColorBadge";
 
 import { FALLBACK_PRODUCT_IMAGE } from "./constants";
 
@@ -254,9 +255,11 @@ export default function CartTab() {
                     {item.name}
                   </Link>
                   {[item.color, item.size].filter(Boolean).length > 0 && (
-                    <p className="mt-0.5 text-[11px] font-medium text-violet-600">
-                      {[item.color, item.size].filter(Boolean).join(" / ")}
-                    </p>
+                    <ColorBadge
+                      color={item.color}
+                      size={item.size}
+                      className="mt-0.5"
+                    />
                   )}
                   <p className="mt-0.5 text-xs text-gray-500">
                     {formatBdt(item.unitPrice)}

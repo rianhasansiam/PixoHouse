@@ -153,7 +153,6 @@ function toSavedItem(item: CartItem): SavedItem {
 }
 
 function toCartViewModel(item: CartItem) {
-  const variantParts = [item.color, item.size].filter(Boolean);
   return {
     id: item.id,
     name: item.name,
@@ -163,7 +162,8 @@ function toCartViewModel(item: CartItem) {
     originalPrice: item.originalPrice > item.unitPrice ? item.originalPrice : undefined,
     quantity: item.quantity,
     maxQuantity: Math.max(1, item.stock),
-    variant: variantParts.length > 0 ? variantParts.join(" / ") : undefined,
+    color: item.color ?? undefined,
+    size: item.size ?? undefined,
     inStock: item.status === "ACTIVE" && item.stock > 0,
     deliveryDays: 4,
     perks: ["Free returns"],

@@ -235,15 +235,18 @@ export default function AdminBannersPage() {
     try {
       if (editing.kind === "carousel") {
         const position = parseIntSafe(carouselForm.position, "Position");
+        const isSolid = carouselForm.bgType === "solid";
         const body = {
           image: carouselForm.image.trim(),
           title: carouselForm.title.trim(),
           subtitle: carouselForm.subtitle.trim(),
           description: carouselForm.description.trim(),
           badge: carouselForm.badge.trim(),
-          bgFrom: carouselForm.bgFrom.trim(),
-          bgVia: carouselForm.bgVia.trim() || null,
-          bgTo: carouselForm.bgTo.trim(),
+          bgType: carouselForm.bgType,
+          bgFrom: isSolid ? null : carouselForm.bgFrom.trim() || null,
+          bgVia: isSolid ? null : carouselForm.bgVia.trim() || null,
+          bgTo: isSolid ? null : carouselForm.bgTo.trim() || null,
+          bgColor: isSolid ? carouselForm.bgColor.trim() || null : null,
           link: carouselForm.link.trim() || null,
           position,
           status: carouselForm.status,

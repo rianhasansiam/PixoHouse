@@ -6,6 +6,7 @@ import Link from 'next/link'
 
 type RecentProductItem = {
   id: string
+  slug: string
   name: string
   image: string
   price: number
@@ -34,7 +35,7 @@ const RecentProducts: React.FC<RecentProductsProps> = ({
         {products.slice(0, 6).map((product) => (
           <Link 
             key={product.id}
-            href={`/products/${product.id}`}
+            href={`/products/${product.slug}`}
             className="flex gap-3 p-2 rounded-xl hover:bg-violet-50 transition-colors group"
           >
             {/* Thumbnail */}

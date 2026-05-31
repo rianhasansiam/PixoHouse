@@ -10,6 +10,10 @@ import {
   type PromoBannerRow,
   type TopBannerRow,
 } from "@/features/admin-banners/api";
+import {
+  resolveBannerBackground,
+  resolveColorValue,
+} from "@/components/ui/tailwind-palette";
 import { cn } from "@/lib/utils";
 
 import { EmptyState, RowFooter } from "./RowFooter";
@@ -70,13 +74,31 @@ export function CarouselList({
             <p className="line-clamp-2 text-xs text-gray-500">
               {banner.description}
             </p>
-            <p className="text-[11px] text-gray-400">
-              {banner.bgFrom} {banner.bgVia ? `→ ${banner.bgVia}` : ""} →{" "}
-              {banner.bgTo}
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <span
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0 rounded ring-1 ring-inset ring-black/10"
+                style={{
+                  background: resolveBannerBackground({
+                    bgType: banner.bgType,
+                    bgColor: banner.bgColor,
+                    bgFrom: banner.bgFrom,
+                    bgVia: banner.bgVia,
+                    bgTo: banner.bgTo,
+                  }),
+                }}
+              />
+              <span className="truncate font-mono">
+                {banner.bgType === "solid"
+                  ? banner.bgColor
+                  : `${banner.bgFrom ?? ""}${
+                      banner.bgVia ? ` → ${banner.bgVia}` : ""
+                    } → ${banner.bgTo ?? ""}`}
+              </span>
               {banner.link && (
-                <span className="ml-2 font-mono">→ {banner.link}</span>
+                <span className="ml-1 truncate font-mono">→ {banner.link}</span>
               )}
-            </p>
+            </div>
             <RowFooter
               busyId={busyId}
               banner={banner}
@@ -248,7 +270,10 @@ export function DealList({
           key={banner.id}
           className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm"
         >
-          <div className={cn("relative h-28 overflow-hidden", banner.bgClass)}>
+          <div
+            className="relative h-28 overflow-hidden"
+            style={{ backgroundColor: resolveColorValue(banner.bgClass) ?? "#f43f5e" }}
+          >
             <img
               src={banner.image}
               alt={banner.title}
@@ -313,7 +338,10 @@ export function PromoList({
           key={banner.id}
           className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm"
         >
-          <div className={cn("relative h-44 overflow-hidden", banner.bgClass)}>
+          <div
+            className="relative h-44 overflow-hidden"
+            style={{ backgroundColor: resolveColorValue(banner.bgClass) ?? "#6d28d9" }}
+          >
             <img
               src={banner.image}
               alt={banner.title}

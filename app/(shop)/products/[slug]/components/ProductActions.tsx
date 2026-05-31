@@ -27,6 +27,13 @@ import type { CartItem } from "@/features/cart/api";
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
 
+const HEX_VALUE = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/** True when the variant's color is a hex value (vs a legacy color name). */
+function colorIsHex(value: string | null): boolean {
+  return typeof value === "string" && HEX_VALUE.test(value.trim());
+}
+
 export type ProductVariantOption = {
   id: string;
   sku: string;
@@ -37,9 +44,14 @@ export type ProductVariantOption = {
   stock: number;
 };
 
-/** Build a human label for a variant, e.g. "Black / Large". */
+/**
+ * Build a human label for a variant, e.g. "Black / Large".
+ * Hex colors are omitted from the text (a swatch is shown beside the label
+ * instead) so the button never prints a raw "#070716".
+ */
 function variantLabel(variant: ProductVariantOption): string {
-  const parts = [variant.color, variant.size].filter(Boolean);
+  const textColor = colorIsHex(variant.color) ? null : variant.color;
+  const parts = [textColor, variant.size].filter(Boolean);
   return parts.length > 0 ? parts.join(" / ") : variant.sku;
 }
 
@@ -169,12 +181,12 @@ const ProductActions = ({
       {selectedVariant && (
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-3xl font-bold text-gray-900">
-            {unitPrice.toLocaleString()} bdt
+            {unitPrice.toLocaleString()} BDT
           </span>
           {discount > 0 && (
             <>
               <span className="text-lg text-gray-400 line-through">
-                {listPrice.toLocaleString()} bdt
+                {listPrice.toLocaleString()} BDT
               </span>
               <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
                 -{discount}%
@@ -205,7 +217,7 @@ const ProductActions = ({
                   type="button"
                   onClick={() => handleSelectVariant(variant.id)}
                   disabled={isOut}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                     isSelected
                       ? "border-violet-600 bg-violet-50 text-violet-700 ring-1 ring-violet-600"
                       : isOut
@@ -213,6 +225,13 @@ const ProductActions = ({
                         : "border-gray-200 text-gray-700 hover:border-violet-300 hover:bg-violet-50"
                   }`}
                 >
+                  {colorIsHex(variant.color) && (
+                    <span
+                      className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-inset ring-black/15"
+                      style={{ backgroundColor: variant.color as string }}
+                      aria-hidden
+                    />
+                  )}
                   {variantLabel(variant)}
                 </button>
               );

@@ -66,7 +66,8 @@ export function serializeProduct(product: ProductWithCategory) {
     images: imageUrls,
     rating: 0,
     reviewCount: 0,
-    badge: null as string | null,
+    color: variant?.color ?? null,
+    size: variant?.size ?? null,
     status: product.status,
     categoryId: product.categoryId,
     category: {
@@ -260,6 +261,37 @@ export function getActiveProductById(id: string) {
   });
 }
 
+/** Fetch a product by its unique slug (any status), or null. */
+export function getProductBySlug(slug: string) {
+  return prisma.product.findUnique({
+    where: { slug },
+    include: productInclude,
+  });
+}
+
+/**
+ * Fetch a publicly visible (ACTIVE) product by slug, or null.
+ *
+ * The slug is the canonical, SEO-friendly product identifier used in
+ * `/products/<slug>` URLs. Inactive/soft-deleted products resolve to
+ * null so they are never exposed to crawlers.
+ */
+export function getActiveProductBySlug(slug: string) {
+  return prisma.product.findFirst({
+    where: { slug, status: "ACTIVE" },
+    include: productInclude,
+  });
+}
+
+/** Resolve just the slug for a product id (used for id -> slug redirects). */
+export async function getProductSlugById(id: string): Promise<string | null> {
+  const row = await prisma.product.findUnique({
+    where: { id },
+    select: { slug: true },
+  });
+  return row?.slug ?? null;
+}
+
 export async function createProduct(input: CreateProductInput) {
   // The product holds catalog data; price/stock live on a default
   // variant and images become ProductImage rows. We keep the legacy
@@ -290,6 +322,8 @@ export async function createProduct(input: CreateProductInput) {
           variants: {
             create: {
               sku: `SKU-${slug}-${Math.random().toString(36).slice(2, 8)}`,
+              color: input.color ?? null,
+              size: input.size ?? null,
               price: input.price,
               salePrice: input.discountPrice ?? null,
               stock: input.stock,
@@ -335,7 +369,9 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
   const primaryVariant =
     input.price !== undefined ||
     input.discountPrice !== undefined ||
-    input.stock !== undefined
+    input.stock !== undefined ||
+    input.color !== undefined ||
+    input.size !== undefined
       ? await prisma.productVariant.findFirst({
           where: { productId: id },
           orderBy: { createdAt: "asc" },
@@ -353,6 +389,8 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
         variantData.salePrice = input.discountPrice;
       }
       if (input.stock !== undefined) variantData.stock = input.stock;
+      if (input.color !== undefined) variantData.color = input.color;
+      if (input.size !== undefined) variantData.size = input.size;
       await tx.productVariant.update({
         where: { id: primaryVariant.id },
         data: variantData,

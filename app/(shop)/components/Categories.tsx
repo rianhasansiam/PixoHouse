@@ -13,6 +13,7 @@ import { CategoriesBanner } from "./CategoriesBanner";
 
 type HomeCategoryProduct = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   price: number;
@@ -106,6 +107,7 @@ export default function Categories({ initialCategories }: CategoriesProps) {
                 <ProductCard
                   key={item.id}
                   id={item.id}
+                  slug={item.slug}
                   name={item.name}
                   price={item.discountPrice ?? item.price}
                   originalPrice={

@@ -770,6 +770,7 @@ async function seedBanners(categoryBySlug: Map<string, { id: string }>) {
         status: "ACTIVE",
         metadata: {
           badge: "Weekend Special",
+          bgType: "gradient",
           bgFrom: "from-blue-500",
           bgVia: "via-indigo-600",
           bgTo: "to-blue-800",
@@ -787,9 +788,26 @@ async function seedBanners(categoryBySlug: Map<string, { id: string }>) {
         status: "ACTIVE",
         metadata: {
           badge: "Flash Deal",
+          bgType: "gradient",
           bgFrom: "from-rose-500",
           bgVia: "via-pink-600",
           bgTo: "to-rose-800",
+        },
+      },
+      {
+        type: "CAROUSEL",
+        title: "MEGA DEALS",
+        subtitle: "EVERYDAY SAVINGS",
+        description: "Solid savings on daily essentials, all in one place.",
+        image:
+          "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&h=500&fit=crop",
+        link: "/products",
+        position: 2,
+        status: "ACTIVE",
+        metadata: {
+          badge: "Daily Picks",
+          bgType: "solid",
+          bgColor: "bg-emerald-600",
         },
       },
       // TOP — thin promo strip (icons/tags in metadata, no image).

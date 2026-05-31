@@ -2,6 +2,19 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * Banner color safelist.
+ *
+ * Carousel / deal / promo banners store their Tailwind color classes as
+ * plain strings in the database (managed from the admin "Banners" page).
+ * Because Tailwind v4 scans source files as text, those admin-entered
+ * classes never appear in the codebase and would be purged from the
+ * build. `@source inline(...)` force-generates every background, from,
+ * via, and to color across the full palette so any slide an admin
+ * configures renders correctly. Brace expansion keeps this compact.
+ */
+@source inline("{bg-,from-,via-,to-}{red,orange,amber,yellow,lime,green,emerald,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose,slate,gray,zinc,neutral,stone}-{50,{100..900..100},950}");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -157,4 +170,56 @@
   .testimonial-marquee-track {
     animation: none;
   }
+}
+
+/*
+ * AdvancedColorPicker (react-colorful) sizing + opacity slider.
+ *
+ * react-colorful ships a fixed 200px square; we widen it and give the
+ * saturation area a taller, landscape feel to match the design-tool look
+ * used on the admin banner/color fields. The opacity <input type="range">
+ * is a plain slider painted with a checkerboard+gradient inline style, so
+ * here we only need to shape its thumb.
+ */
+.advanced-color-picker.react-colorful {
+  width: 100%;
+  height: 188px;
+}
+.advanced-color-picker .react-colorful__saturation {
+  border-radius: 12px 12px 0 0;
+}
+.advanced-color-picker .react-colorful__last-control {
+  border-radius: 0 0 12px 12px;
+}
+.advanced-color-picker .react-colorful__hue,
+.advanced-color-picker .react-colorful__alpha {
+  height: 22px;
+}
+.advanced-color-picker .react-colorful__pointer {
+  width: 22px;
+  height: 22px;
+}
+
+.advanced-opacity-slider {
+  outline: none;
+}
+.advanced-opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.advanced-opacity-slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
 }

@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+import { resolveColorValue } from '@/components/ui/tailwind-palette'
+
 type DealBanner = {
   id: string
   image: string
@@ -69,7 +71,8 @@ const DealsCarousel: React.FC<DealsCarouselProps> = ({
           <Link
             key={deal.id}
             href={deal.link ?? "#"}
-            className={`relative min-w-[180px] h-24 rounded-xl overflow-hidden ${deal.bgClass} shrink-0 snap-start group`}
+            style={{ backgroundColor: resolveColorValue(deal.bgClass) ?? "#f43f5e" }}
+            className="relative min-w-[180px] h-24 rounded-xl overflow-hidden shrink-0 snap-start group"
           >
             <Image
               src={deal.image}

@@ -13,7 +13,8 @@ export type AdminProduct = {
   images: string[];
   rating: number;
   reviewCount: number;
-  badge: string | null;
+  color: string | null;
+  size: string | null;
   status: ProductStatus;
   stock: number;
   createdAt: string;
@@ -52,7 +53,8 @@ export type ProductFormState = {
   stock: string;
   image: string;
   images: string;
-  badge: string;
+  color: string;
+  size: string;
   status: ProductStatus;
   categoryId: string;
 };
@@ -69,7 +71,8 @@ export const EMPTY_FORM: ProductFormState = {
   stock: "0",
   image: "",
   images: "",
-  badge: "",
+  color: "",
+  size: "",
   status: "ACTIVE",
   categoryId: "",
 };
@@ -152,6 +155,13 @@ export function parseProductsPayload(payload: unknown): AdminProduct[] {
     const discountPrice = readNumber(row.discountPrice);
     const stock = readNumber(row.stock) ?? 0;
 
+    // color/size live on the primary variant in the serialized payload.
+    const primaryVariant = Array.isArray(row.variants)
+      ? asRecord(row.variants[0])
+      : null;
+    const color = primaryVariant ? readString(primaryVariant.color) : null;
+    const size = primaryVariant ? readString(primaryVariant.size) : null;
+
     return {
       id: readString(row.id) ?? "",
       productCode: readString(row.productCode) ?? "",
@@ -163,7 +173,8 @@ export function parseProductsPayload(payload: unknown): AdminProduct[] {
       images,
       rating: readNumber(row.rating) ?? 0,
       reviewCount: readNumber(row.reviewCount) ?? 0,
-      badge: readString(row.badge),
+      color,
+      size,
       status: row.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
       stock,
       createdAt: readString(row.createdAt) ?? new Date(0).toISOString(),
@@ -281,7 +292,8 @@ export function buildFormFromProduct(product: AdminProduct): ProductFormState {
     stock: String(product.stock),
     image: product.image ?? "",
     images: product.images.join("\n"),
-    badge: product.badge ?? "",
+    color: product.color ?? "",
+    size: product.size ?? "",
     status: product.status,
     categoryId: product.categoryId,
   };

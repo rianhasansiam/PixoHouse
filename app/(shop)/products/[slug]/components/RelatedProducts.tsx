@@ -7,6 +7,7 @@ import { ShoppingBag, Loader2 } from 'lucide-react'
 
 type RecentProductItem = {
   id: string
+  slug: string
   name: string
   image: string
   price: number
@@ -62,7 +63,7 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({
         {visibleProducts.map((product) => (
           <Link
             key={product.id}
-            href={`/products/${product.id}`}
+            href={`/products/${product.slug}`}
             className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg hover:border-violet-200 transition-all"
           >
             {/* Image Container */}
@@ -91,7 +92,7 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({
               {/* Price */}
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-sm font-bold text-gray-900">
-                  {product.price.toLocaleString()} bdt
+                  {product.price.toLocaleString()} BDT
                 </span>
                 {product.discount > 0 && (
                   <span className="text-[10px] text-gray-400 line-through">

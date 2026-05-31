@@ -161,6 +161,7 @@ export async function getCategoryById(
  */
 export type PublicCategoryProduct = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   price: number;
@@ -185,6 +186,7 @@ async function loadActiveCategoryBySlug(
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          slug: true,
           name: true,
           description: true,
           images: { orderBy: { position: "asc" }, take: 1, select: { url: true } },
@@ -211,6 +213,7 @@ async function loadActiveCategoryBySlug(
       const discountPrice = sale != null && sale < price ? sale : null;
       return {
         id: product.id,
+        slug: product.slug,
         name: product.name,
         description: product.description,
         price,

@@ -14,6 +14,15 @@ import { z } from "zod";
 
 const STATUS = ["ACTIVE", "INACTIVE"] as const;
 
+/**
+ * Carousel slides can paint their hero background two ways:
+ *   - "gradient": a `bg-linear-*` gradient built from bgFrom/bgVia/bgTo.
+ *   - "solid":    a single `bg-*` utility stored in bgColor.
+ * The admin picks one; the storefront reads `bgType` to know which set
+ * of color fields to honor.
+ */
+const BG_TYPE = ["gradient", "solid"] as const;
+
 const url = z.string().trim().min(1, "URL is required.").max(2048);
 
 const optionalUrl = z.string().trim().max(2048).optional().nullable();
@@ -32,15 +41,43 @@ const carouselFields = {
   subtitle: shortText,
   description: longText,
   badge: shortText,
-  bgFrom: shortText,
+  bgType: z.enum(BG_TYPE).default("gradient"),
+  bgFrom: shortText.optional().nullable(),
   bgVia: shortText.optional().nullable(),
-  bgTo: shortText,
+  bgTo: shortText.optional().nullable(),
+  bgColor: shortText.optional().nullable(),
   link: optionalUrl,
   position: z.coerce.number().int().min(0).max(9999).default(0),
   status: z.enum(STATUS).default("ACTIVE"),
 };
 
-export const createCarouselBannerSchema = z.object(carouselFields);
+/**
+ * A carousel slide must carry the color fields that match its `bgType`:
+ * gradients need at least bgFrom + bgTo; solids need bgColor. This keeps
+ * the storefront from rendering a colorless hero.
+ */
+function carouselColorsAreComplete(data: {
+  bgType?: "gradient" | "solid";
+  bgFrom?: string | null;
+  bgTo?: string | null;
+  bgColor?: string | null;
+}): boolean {
+  if (data.bgType === "solid") {
+    return Boolean(data.bgColor && data.bgColor.trim());
+  }
+  // Default / gradient
+  return Boolean(
+    data.bgFrom && data.bgFrom.trim() && data.bgTo && data.bgTo.trim(),
+  );
+}
+
+export const createCarouselBannerSchema = z
+  .object(carouselFields)
+  .refine(carouselColorsAreComplete, {
+    message:
+      "Gradient slides need a From and To color; solid slides need a background color.",
+    path: ["bgColor"],
+  });
 
 export const updateCarouselBannerSchema = z
   .object({
@@ -49,9 +86,11 @@ export const updateCarouselBannerSchema = z
     subtitle: shortText.optional(),
     description: longText.optional(),
     badge: shortText.optional(),
-    bgFrom: shortText.optional(),
+    bgType: z.enum(BG_TYPE).optional(),
+    bgFrom: shortText.optional().nullable(),
     bgVia: shortText.optional().nullable(),
-    bgTo: shortText.optional(),
+    bgTo: shortText.optional().nullable(),
+    bgColor: shortText.optional().nullable(),
     link: optionalUrl,
     position: z.coerce.number().int().min(0).max(9999).optional(),
     status: z.enum(STATUS).optional(),

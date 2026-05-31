@@ -9,9 +9,11 @@ type CarouselBannerRow = {
   subtitle: string;
   description: string;
   badge: string;
-  bgFrom: string;
+  bgType: "gradient" | "solid";
+  bgFrom: string | null;
   bgVia: string | null;
-  bgTo: string;
+  bgTo: string | null;
+  bgColor: string | null;
   link: string | null;
   position: number;
   status: BannerStatus;

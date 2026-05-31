@@ -44,6 +44,7 @@ import type { WishlistItem } from "@/features/wishlist/api";
 
 type ProductCardProps = {
   id: string;
+  slug?: string;
   name: string;
   price: number;
   originalPrice?: number;
@@ -55,6 +56,7 @@ type ProductCardProps = {
 
 export default function ProductCard({
   id,
+  slug,
   name,
   price,
   originalPrice,
@@ -75,6 +77,10 @@ export default function ProductCard({
   const discount = originalPrice
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
+
+  // Prefer the SEO-friendly slug; fall back to id for callers that
+  // haven't been threaded with a slug yet (the route resolves both).
+  const productHref = `/products/${slug ?? id}`;
 
   const handleToggleWishlist = async () => {
     if (isBusy) return;
@@ -193,7 +199,7 @@ export default function ProductCard({
   return (
     <div className="group relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-lg">
       <div className="relative aspect-4/3 overflow-hidden bg-gray-50">
-        <Link href={`/products/${id}`}>
+        <Link href={productHref}>
           <Image
             src={image}
             alt={name}
@@ -267,7 +273,7 @@ export default function ProductCard({
           </div>
         )}
 
-        <Link href={`/products/${id}`}>
+        <Link href={productHref}>
           <h3 className="line-clamp-1 text-xs font-semibold leading-tight text-gray-800 transition-colors hover:text-violet-700 sm:text-sm">
             {name}
           </h3>

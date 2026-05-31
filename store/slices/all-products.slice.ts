@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 type AllProductsItem = {
   id: string;
+  slug: string;
   productCode: string;
   name: string;
   description: string | null;

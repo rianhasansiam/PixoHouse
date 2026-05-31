@@ -57,9 +57,11 @@ export type CarouselBannerRow = {
   subtitle: string;
   description: string;
   badge: string;
-  bgFrom: string;
+  bgType: "gradient" | "solid";
+  bgFrom: string | null;
   bgVia: string | null;
-  bgTo: string;
+  bgTo: string | null;
+  bgColor: string | null;
   link: string | null;
   position: number;
   status: BannerStatus;
@@ -191,6 +193,7 @@ type BannerRowWithCategory = Prisma.BannerGetPayload<{
 
 function toCarouselRow(b: BannerRow): CarouselBannerRow {
   const meta = readMeta(b.metadata);
+  const bgType = metaStr(meta, "bgType") === "solid" ? "solid" : "gradient";
   return {
     id: b.id,
     image: b.image ?? "",
@@ -198,9 +201,11 @@ function toCarouselRow(b: BannerRow): CarouselBannerRow {
     subtitle: b.subtitle ?? "",
     description: b.description ?? "",
     badge: metaStr(meta, "badge"),
-    bgFrom: metaStr(meta, "bgFrom"),
+    bgType,
+    bgFrom: metaStrOrNull(meta, "bgFrom"),
     bgVia: metaStrOrNull(meta, "bgVia"),
-    bgTo: metaStr(meta, "bgTo"),
+    bgTo: metaStrOrNull(meta, "bgTo"),
+    bgColor: metaStrOrNull(meta, "bgColor"),
     link: b.link,
     position: b.position,
     status: b.status,
@@ -371,9 +376,11 @@ export async function createCarouselBanner(input: CreateCarouselBannerInput) {
       status: input.status,
       metadata: cleanMeta({
         badge: input.badge,
-        bgFrom: input.bgFrom,
+        bgType: input.bgType,
+        bgFrom: input.bgFrom ?? null,
         bgVia: input.bgVia ?? null,
-        bgTo: input.bgTo,
+        bgTo: input.bgTo ?? null,
+        bgColor: input.bgColor ?? null,
       }),
     },
     select: bannerSelect,
@@ -403,9 +410,11 @@ export async function updateCarouselBanner(
   if (input.status !== undefined) data.status = input.status;
 
   if (input.badge !== undefined) meta.badge = input.badge;
+  if (input.bgType !== undefined) meta.bgType = input.bgType;
   if (input.bgFrom !== undefined) meta.bgFrom = input.bgFrom;
   if (input.bgVia !== undefined) meta.bgVia = input.bgVia;
   if (input.bgTo !== undefined) meta.bgTo = input.bgTo;
+  if (input.bgColor !== undefined) meta.bgColor = input.bgColor;
   data.metadata = cleanMeta(meta as Meta);
 
   const row = await prisma.banner.update({
@@ -418,6 +427,27 @@ export async function updateCarouselBanner(
 
 export function deleteCarouselBanner(id: string) {
   return deleteBannerOfType(id, "CAROUSEL").then(toCarouselRow);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Public read for the home page hero carousel                               */
+/* -------------------------------------------------------------------------- */
+
+const getCachedActiveCarouselBanners = unstable_cache(
+  async (): Promise<CarouselBannerRow[]> => {
+    const rows = await prisma.banner.findMany({
+      where: { type: "CAROUSEL", status: "ACTIVE" },
+      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+      select: bannerSelect,
+    });
+    return rows.map(toCarouselRow);
+  },
+  ["carousel-banners-active"],
+  { revalidate: 300, tags: ["carousel-banners"] },
+);
+
+export function getActiveCarouselBanners() {
+  return getCachedActiveCarouselBanners();
 }
 
 /* -------------------------------------------------------------------------- */

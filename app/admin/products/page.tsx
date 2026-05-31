@@ -204,7 +204,8 @@ export default function AdminProductsPage() {
     const description = form.description.trim() || null;
     const image = form.image.trim() || null;
     const images = normalizeImagesInput(form.images);
-    const badge = form.badge.trim() || null;
+    const color = form.color.trim() || null;
+    const size = form.size.trim() || null;
 
     setIsSubmitting(true);
     try {
@@ -217,7 +218,8 @@ export default function AdminProductsPage() {
           stock,
           image,
           images,
-          badge,
+          color,
+          size,
           status: form.status,
           categoryId: form.categoryId,
         };
@@ -246,7 +248,8 @@ export default function AdminProductsPage() {
         if (discountPrice !== editingProduct.discountPrice) patch.discountPrice = discountPrice;
         if (stock !== editingProduct.stock) patch.stock = stock;
         if (image !== (editingProduct.image ?? null)) patch.image = image;
-        if (badge !== (editingProduct.badge ?? null)) patch.badge = badge;
+        if (color !== (editingProduct.color ?? null)) patch.color = color;
+        if (size !== (editingProduct.size ?? null)) patch.size = size;
         if (form.status !== editingProduct.status) patch.status = form.status;
         if (form.categoryId !== editingProduct.categoryId) patch.categoryId = form.categoryId;
 

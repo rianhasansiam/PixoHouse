@@ -114,10 +114,10 @@ export default function SearchBar({
     setActiveIndex(-1);
   };
 
-  const goToProduct = (id: string) => {
+  const goToProduct = (slug: string) => {
     closeDropdown();
     onNavigate?.();
-    router.push(`/products/${id}`);
+    router.push(`/products/${slug}`);
   };
 
   const goToAllResults = () => {
@@ -140,7 +140,7 @@ export default function SearchBar({
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (activeIndex >= 0 && results[activeIndex]) {
-        goToProduct(results[activeIndex].id);
+        goToProduct(results[activeIndex].slug);
       } else {
         goToAllResults();
       }
@@ -237,7 +237,7 @@ export default function SearchBar({
                       <button
                         type="button"
                         onMouseEnter={() => setActiveIndex(index)}
-                        onClick={() => goToProduct(product.id)}
+                        onClick={() => goToProduct(product.slug)}
                         className={cn(
                           "flex w-full items-center gap-3 px-3 py-2 text-left transition-colors",
                           index === activeIndex

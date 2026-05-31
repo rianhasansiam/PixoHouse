@@ -129,7 +129,14 @@ function drawItemsTable(doc: Doc, startY: number, order: OrderDetail): number {
     startY: startY + 3,
     head: [["Product", "Qty", "Unit", "Line total"]],
     body: order.items.map((item) => {
-      const variantParts = [item.color, item.size].filter(Boolean);
+      // A hex color (picked in admin) is a swatch on screen; in the PDF we
+      // only have text, so drop hex values and keep readable names/sizes.
+      const isHex =
+        typeof item.color === "string" &&
+        /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(item.color.trim());
+      const variantParts = [isHex ? null : item.color, item.size].filter(
+        Boolean,
+      );
       const productCell = variantParts.length > 0
         ? `${item.productName}\n(${variantParts.join(" / ")})`
         : item.productName;

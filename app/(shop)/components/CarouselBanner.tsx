@@ -4,97 +4,84 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const dealCards = [
-  {
-    id: "crb1",
-    image:
-      "https://images.unsplash.com/photo-1543168256-418811576931?w=800&h=500&fit=crop",
-    title: "25% OFF",
-    subtitle: "VEGETABLES",
-    description: "Fresh vegetables delivered fast with special weekend discounts.",
-    badge: "Weekend Special",
-    bgFrom: "from-green-400",
-    bgVia: "via-emerald-400",
-    bgTo: "to-green-500",
-    link: "/products?category=grocery",
-  },
-  {
-    id: "crb2",
-    image:
-      "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&h=500&fit=crop",
-    title: "SPECIAL",
-    subtitle: "OFFER",
-    description: "Grab limited-time fashion deals before the offer ends.",
-    badge: "Flash Deal",
-    bgFrom: "from-orange-400",
-    bgVia: "via-red-400",
-    bgTo: "to-rose-500",
-    link: "/products?category=fashion",
-  },
-  {
-    id: "crb3",
-    image:
-      "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800&h=500&fit=crop",
-    title: "50%",
-    subtitle: "DISCOUNT",
-    description: "Upgrade your gadgets with amazing electronics discounts.",
-    badge: "Mega Sale",
-    bgFrom: "from-purple-400",
-    bgVia: "via-indigo-400",
-    bgTo: "to-blue-500",
-    link: "/products?category=electronics",
-  },
-  {
-    id: "crb4",
-    image:
-      "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=500&fit=crop",
-    title: "DELICIOUS",
-    subtitle: "50% OFF",
-    description: "Order delicious food items with exciting discount offers.",
-    badge: "Food Deal",
-    bgFrom: "from-amber-400",
-    bgVia: "via-orange-400",
-    bgTo: "to-red-500",
-    link: "/products?category=food",
-  },
-  {
-    id: "crb5",
-    image:
-      "https://images.unsplash.com/photo-1560393464-5c69a73c5770?w=800&h=500&fit=crop",
-    title: "FRESH PICKS",
-    subtitle: "FRESH DEALS",
-    description: "Explore fresh products, best picks, and daily offers.",
-    badge: "Daily Picks",
-    bgFrom: "from-teal-400",
-    bgVia: "via-cyan-400",
-    bgTo: "to-blue-500",
-    link: "/products",
-  },
-];
+import { resolveBannerBackground } from "@/components/ui/tailwind-palette";
 
-export default function CaroselBanner() {
+/**
+ * Home page hero carousel.
+ *
+ * Slides are managed from the admin "Banners" page (CAROUSEL type in the
+ * unified `Banner` model) and passed in from the server component. Each
+ * slide paints its background either as a gradient (bgFrom/bgVia/bgTo)
+ * or a single solid color (bgColor), selected by `bgType`.
+ *
+ * Colors are stored as hex values (chosen with the admin color picker) and
+ * applied via inline `style`. Older rows that still hold Tailwind class
+ * strings are resolved to hex by `resolveBannerBackground`, so existing
+ * slides keep rendering.
+ */
+export type CarouselSlide = {
+  id: string;
+  image: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  badge: string;
+  bgType: "gradient" | "solid";
+  bgFrom: string | null;
+  bgVia: string | null;
+  bgTo: string | null;
+  bgColor: string | null;
+  link: string | null;
+};
 
+/** Build the hero panel background as a CSS value (hex gradient or solid). */
+function heroBackground(slide: CarouselSlide): string {
+  return resolveBannerBackground({
+    bgType: slide.bgType,
+    bgColor: slide.bgColor,
+    bgFrom: slide.bgFrom,
+    bgVia: slide.bgVia,
+    bgTo: slide.bgTo,
+  });
+}
 
+/** Compact background for the deal selector cards (no "via" stop). */
+function cardBackground(slide: CarouselSlide): string {
+  return resolveBannerBackground({
+    bgType: slide.bgType,
+    bgColor: slide.bgColor,
+    bgFrom: slide.bgFrom,
+    bgTo: slide.bgTo,
+  });
+}
 
+export default function CaroselBanner({ slides }: { slides: CarouselSlide[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const activeDeal = dealCards[activeIndex];
-
   useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
       setActiveIndex((prevIndex) =>
-        prevIndex === dealCards.length - 1 ? 0 : prevIndex + 1
+        prevIndex === slides.length - 1 ? 0 : prevIndex + 1,
       );
     }, 3500);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
+
+  if (slides.length === 0) return null;
+
+  // Slides can change between renders (admin edits + revalidation), so
+  // clamp at render time to stay in range without an extra state sync.
+  const safeIndex = Math.min(activeIndex, slides.length - 1);
+  const activeDeal = slides[safeIndex];
 
   return (
     <div className="space-y-5">
       {/* Hero Banner */}
       <div
-        className={`relative overflow-hidden bg-linear-to-r ${activeDeal.bgFrom} ${activeDeal.bgVia} ${activeDeal.bgTo} rounded-2xl mx-3 sm:mx-4 lg:mx-6 mt-4 transition-all duration-700`}
+        className="relative overflow-hidden rounded-2xl mx-3 sm:mx-4 lg:mx-6 mt-4 transition-all duration-700"
+        style={{ background: heroBackground(activeDeal) }}
       >
         {/* Background Effects */}
         <div className="absolute inset-0 opacity-10">
@@ -125,7 +112,7 @@ export default function CaroselBanner() {
 
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
               <Link
-                href={activeDeal.link}
+                href={activeDeal.link ?? "/products"}
                 className="px-6 py-2.5 bg-white text-violet-700 font-bold text-sm rounded-full hover:bg-yellow-300 hover:text-violet-900 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
               >
                 Shop Now
@@ -162,17 +149,18 @@ export default function CaroselBanner() {
       </div>
 
       {/* Deal Cards */}
-      <div className="px-3 sm:px-4 lg:px-6">
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {dealCards.map((card, index) => {
-            const isActive = index === activeIndex;
+      {slides.length > 1 && (
+        <div className="px-3 sm:px-4 lg:px-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {slides.map((card, index) => {
+              const isActive = index === safeIndex;
 
-            return (
-              <button
-                key={card.id}
-                onClick={() => setActiveIndex(index)}
-                className={`bg-linear-to-br ${card.bgFrom} ${card.bgTo}
-                  rounded-xl min-w-[160px] sm:min-w-[180px] h-28 sm:h-32 shrink-0
+              return (
+                <button
+                  key={card.id}
+                  onClick={() => setActiveIndex(index)}
+                  style={{ background: cardBackground(card) }}
+                  className={`rounded-xl min-w-[160px] sm:min-w-[180px] h-28 sm:h-32 shrink-0
                   shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300
                   cursor-pointer relative overflow-hidden group flex-1 text-left
                   ${
@@ -181,40 +169,39 @@ export default function CaroselBanner() {
                       : "ring-1 ring-white/20"
                   }
                 `}
-              >
-                <Image
-                  src={card.image}
-                  alt={card.subtitle}
-                  fill
-                  className={`object-cover transition-all duration-500 ${
-                    isActive
-                      ? "opacity-60 scale-110"
-                      : "opacity-40 group-hover:opacity-50 group-hover:scale-110"
-                  }`}
-                />
+                >
+                  <Image
+                    src={card.image}
+                    alt={card.subtitle}
+                    fill
+                    className={`object-cover transition-all duration-500 ${
+                      isActive
+                        ? "opacity-60 scale-110"
+                        : "opacity-40 group-hover:opacity-50 group-hover:scale-110"
+                    }`}
+                  />
 
-                <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
 
-                {/* Active Progress Indicator */}
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 h-1 bg-yellow-300 animate-[progress_3.5s_linear_infinite]" />
-                )}
+                  {/* Active Progress Indicator */}
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 h-1 bg-yellow-300 animate-[progress_3.5s_linear_infinite]" />
+                  )}
 
-                <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-3">
-                  <h3 className="text-lg sm:text-xl font-black text-white drop-shadow-lg mb-0.5">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm font-semibold text-white/90 drop-shadow">
-                    {card.subtitle}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+                  <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-3">
+                    <h3 className="text-lg sm:text-xl font-black text-white drop-shadow-lg mb-0.5">
+                      {card.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm font-semibold text-white/90 drop-shadow">
+                      {card.subtitle}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-     
+      )}
     </div>
   );
 }

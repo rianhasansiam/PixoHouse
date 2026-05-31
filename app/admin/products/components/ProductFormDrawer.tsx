@@ -9,6 +9,7 @@ import {
 } from "@/features/admin-products/api";
 import ImageUploader from "@/components/ui/ImageUploader";
 import MultiImageUploader from "@/components/ui/MultiImageUploader";
+import AdvancedColorPicker from "@/components/ui/AdvancedColorPicker";
 import { cn } from "@/lib/utils";
 
 import Field from "./Field";
@@ -158,16 +159,30 @@ export default function ProductFormDrawer({
                 </Field>
               </div>
 
-              <Field label="Badge">
-                <input
-                  value={form.badge}
-                  onChange={(event) =>
-                    onChange((prev) => ({ ...prev, badge: event.target.value }))
-                  }
-                  className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-                  placeholder="Bestseller / New"
-                />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Color">
+                  <AdvancedColorPicker
+                    label="Product color"
+                    alpha={false}
+                    value={form.color}
+                    onChange={(color) =>
+                      onChange((prev) => ({ ...prev, color }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </Field>
+
+                <Field label="Size">
+                  <input
+                    value={form.size}
+                    onChange={(event) =>
+                      onChange((prev) => ({ ...prev, size: event.target.value }))
+                    }
+                    className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
+                    placeholder="e.g. M, L, XL / 42"
+                  />
+                </Field>
+              </div>
 
               <Field label="Primary Image">
                 <ImageUploader

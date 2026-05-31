@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 type HomeCategoryProduct = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   price: number;
@@ -63,6 +64,7 @@ const getCachedHomeCategories = unstable_cache(
           take: productsPerCategory,
           select: {
             id: true,
+            slug: true,
             name: true,
             description: true,
             images: {
@@ -107,6 +109,7 @@ const getCachedHomeCategories = unstable_cache(
           const imageUrls = product.images.map((img) => img.url);
           return {
             id: product.id,
+            slug: product.slug,
             name: product.name,
             description: product.description,
             price,

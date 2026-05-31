@@ -55,7 +55,9 @@ const image = z
 
 const images = z.array(z.string().trim().max(2048)).max(20).optional();
 
-const badge = z.string().trim().max(40).optional().nullable();
+const color = z.string().trim().max(40).optional().nullable();
+
+const size = z.string().trim().max(40).optional().nullable();
 
 /** Body for `POST /api/products`. */
 export const createProductSchema = z
@@ -67,7 +69,8 @@ export const createProductSchema = z
     stock: stock.default(0),
     image,
     images,
-    badge,
+    color,
+    size,
     status: z.enum(PRODUCT_STATUS).default("ACTIVE"),
     categoryId: z.string().trim().min(1, "Category is required."),
   })
@@ -97,7 +100,8 @@ export const updateProductSchema = z
     stock: stock.optional(),
     image,
     images,
-    badge,
+    color,
+    size,
     status: z.enum(PRODUCT_STATUS).optional(),
     categoryId: z.string().trim().min(1).optional(),
   })

@@ -4,7 +4,14 @@ export type BannerStatus = "ACTIVE" | "INACTIVE";
 
 export type BannerKind = "carousel" | "category" | "top" | "deal" | "promo";
 
+export type CarouselBgType = "gradient" | "solid";
+
 export const STATUS_VALUES: readonly BannerStatus[] = ["ACTIVE", "INACTIVE"];
+
+export const CAROUSEL_BG_TYPES: readonly CarouselBgType[] = [
+  "gradient",
+  "solid",
+];
 
 /* -------------------------------------------------------------------------- */
 /*  Row shapes                                                                */
@@ -17,9 +24,11 @@ export type CarouselBannerRow = {
   subtitle: string;
   description: string;
   badge: string;
-  bgFrom: string;
+  bgType: CarouselBgType;
+  bgFrom: string | null;
   bgVia: string | null;
-  bgTo: string;
+  bgTo: string | null;
+  bgColor: string | null;
   link: string | null;
   position: number;
   status: BannerStatus;
@@ -111,9 +120,11 @@ export type CarouselFormState = {
   subtitle: string;
   description: string;
   badge: string;
+  bgType: CarouselBgType;
   bgFrom: string;
   bgVia: string;
   bgTo: string;
+  bgColor: string;
   link: string;
   position: string;
   status: BannerStatus;
@@ -125,9 +136,11 @@ export const EMPTY_CAROUSEL_FORM: CarouselFormState = {
   subtitle: "",
   description: "",
   badge: "",
-  bgFrom: "from-violet-500",
-  bgVia: "via-indigo-600",
-  bgTo: "to-blue-700",
+  bgType: "gradient",
+  bgFrom: "#8b5cf6",
+  bgVia: "#6366f1",
+  bgTo: "#1d4ed8",
+  bgColor: "#7c3aed",
   link: "",
   position: "0",
   status: "ACTIVE",
@@ -191,7 +204,7 @@ export const EMPTY_DEAL_FORM: DealFormState = {
   image: "",
   title: "",
   subtitle: "",
-  bgClass: "bg-rose-500",
+  bgClass: "#f43f5e",
   link: "",
   position: "0",
   status: "ACTIVE",
@@ -213,7 +226,7 @@ export const EMPTY_PROMO_FORM: PromoFormState = {
   title: "",
   subtitle: "",
   discount: "",
-  bgClass: "bg-violet-700",
+  bgClass: "#6d28d9",
   link: "",
   position: "0",
   status: "ACTIVE",
@@ -235,6 +248,10 @@ function parseStatus(value: unknown): BannerStatus {
   return value === "INACTIVE" ? "INACTIVE" : "ACTIVE";
 }
 
+function parseCarouselBgType(value: unknown): CarouselBgType {
+  return value === "solid" ? "solid" : "gradient";
+}
+
 function parseCarousel(entry: unknown): CarouselBannerRow {
   const item = (entry ?? {}) as Partial<CarouselBannerRow>;
   return {
@@ -244,9 +261,11 @@ function parseCarousel(entry: unknown): CarouselBannerRow {
     subtitle: asString(item.subtitle),
     description: asString(item.description),
     badge: asString(item.badge),
-    bgFrom: asString(item.bgFrom),
+    bgType: parseCarouselBgType(item.bgType),
+    bgFrom: asNullableString(item.bgFrom),
     bgVia: asNullableString(item.bgVia),
-    bgTo: asString(item.bgTo),
+    bgTo: asNullableString(item.bgTo),
+    bgColor: asNullableString(item.bgColor),
     link: asNullableString(item.link),
     position: Number(item.position ?? 0),
     status: parseStatus(item.status),
@@ -389,9 +408,11 @@ type CarouselCreateBody = {
   subtitle: string;
   description: string;
   badge: string;
-  bgFrom: string;
+  bgType: CarouselBgType;
+  bgFrom: string | null;
   bgVia: string | null;
-  bgTo: string;
+  bgTo: string | null;
+  bgColor: string | null;
   link: string | null;
   position: number;
   status: BannerStatus;
@@ -701,9 +722,11 @@ export function buildCarouselForm(
     subtitle: banner.subtitle,
     description: banner.description,
     badge: banner.badge,
-    bgFrom: banner.bgFrom,
+    bgType: banner.bgType,
+    bgFrom: banner.bgFrom ?? "",
     bgVia: banner.bgVia ?? "",
-    bgTo: banner.bgTo,
+    bgTo: banner.bgTo ?? "",
+    bgColor: banner.bgColor ?? "",
     link: banner.link ?? "",
     position: String(banner.position),
     status: banner.status,

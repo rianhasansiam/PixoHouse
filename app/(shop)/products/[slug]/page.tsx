@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import {
   getActiveDealBanners,
   getActivePromoBanners,
 } from "@/lib/services/banner.service";
 import {
-  getActiveProductById,
-  getProductById,
+  getActiveProductBySlug,
+  getProductBySlug,
+  getProductSlugById,
   listProducts,
 } from "@/lib/services/product.service";
 import JsonLd from "@/components/seo/JsonLd";
@@ -21,6 +22,7 @@ import DealsCarousel from "./components/DealsCarousel";
 import ProductActions from "./components/ProductActions";
 import ProductGallery from "./components/ProductGallery";
 import ProductInfo from "./components/ProductInfo";
+import ProductTabs from "./components/ProductTabs";
 import PromoBanners from "./components/PromoBanners";
 import RecentProducts from "./components/RecentProducts";
 import RelatedProducts from "./components/RelatedProducts";
@@ -30,7 +32,7 @@ const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
 
 type Props = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 };
 
 /** Resolve effective price (sale price when valid) from the primary variant. */
@@ -57,16 +59,16 @@ function discountPercent(price: number, originalPrice: number) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { slug } = await params;
   // Only ACTIVE products get rich, indexable metadata. Inactive or
   // missing products are marked noindex so they never surface in search.
-  const product = await getActiveProductById(id);
+  const product = await getActiveProductBySlug(slug);
 
   if (!product) {
     return buildMetadata({
       title: "Product Not Found",
       description: "The requested product could not be found.",
-      path: `/products/${id}`,
+      path: `/products/${slug}`,
       index: false,
     });
   }
@@ -79,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildMetadata({
     title: product.name,
     description,
-    path: `/products/${product.id}`,
+    path: `/products/${product.slug}`,
     image: product.images[0]?.url ?? null,
     keywords: [
       product.name,
@@ -91,9 +93,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductDetailsPage({ params }: Props) {
-  const { id } = await params;
-  const product = await getProductById(id);
-  if (!product) notFound();
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+
+  // Backward compatibility: older links (cart, wishlist, orders, shared
+  // URLs) reference a product by its cuid id. If the slug lookup misses,
+  // try treating the param as an id and 308-redirect to the canonical
+  // slug URL so the clean URL becomes the single source of truth.
+  if (!product) {
+    const canonicalSlug = await getProductSlugById(slug);
+    if (canonicalSlug && canonicalSlug !== slug) {
+      redirect(`/products/${canonicalSlug}`);
+    }
+    notFound();
+  }
 
   // Pull a generous batch from the same category so we can split it into
   // recent + related without hitting the DB twice. Banners come from
@@ -118,6 +131,7 @@ export default async function ProductDetailsPage({ params }: Props) {
     const cardOriginal = listPrice(row);
     return {
       id: row.id,
+      slug: row.slug,
       name: row.name,
       image: row.images[0]?.url ?? FALLBACK_PRODUCT_IMAGE,
       price: cardPrice,
@@ -137,7 +151,7 @@ export default async function ProductDetailsPage({ params }: Props) {
   const breadcrumbItems = [
     {
       label: product.category.name,
-      href: `/products?category=${product.category.id}`,
+      href: `/categories/${product.category.slug}`,
     },
     { label: product.name },
   ];
@@ -156,7 +170,7 @@ export default async function ProductDetailsPage({ params }: Props) {
           product.images.length > 0
             ? product.images.map((img) => img.url)
             : [FALLBACK_PRODUCT_IMAGE],
-        path: `/products/${product.id}`,
+        path: `/products/${product.slug}`,
         price: effectivePrice(product),
         inStock: product.variants.some((v) => v.stock > 0),
         category: product.category.name,
@@ -171,7 +185,7 @@ export default async function ProductDetailsPage({ params }: Props) {
           name: product.category.name,
           path: `/categories/${product.category.slug}`,
         },
-        { name: product.name, path: `/products/${product.id}` },
+        { name: product.name, path: `/products/${product.slug}` },
       ])
     : null;
 
@@ -221,7 +235,11 @@ export default async function ProductDetailsPage({ params }: Props) {
           </div>
         </div>
 
-        
+        {product.description?.trim() && (
+          <div className="mt-10">
+            <ProductTabs description={product.description} />
+          </div>
+        )}
 
         <div className="mt-10">
           <DealsCarousel deals={dealBanners} title="Black Friday Deals" />

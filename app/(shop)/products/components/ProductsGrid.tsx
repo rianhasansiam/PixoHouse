@@ -115,6 +115,7 @@ export default function ProductsGrid({
         >
           <ProductCard
             id={p.id}
+            slug={p.slug}
             name={p.name}
             price={p.discountPrice ?? p.price}
             originalPrice={p.discountPrice ? p.price : undefined}
@@ -186,7 +187,7 @@ function ListItem({ product }: { product: Product }) {
   return (
     <div className="group flex gap-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:border-violet-200 hover:shadow-md sm:gap-4">
       <Link
-        href={`/products/${product.id}`}
+        href={`/products/${product.slug}`}
         className="relative aspect-square w-28 shrink-0 overflow-hidden bg-gray-50 sm:w-40 md:w-48"
       >
         <Image
@@ -211,7 +212,7 @@ function ListItem({ product }: { product: Product }) {
 
       <div className="flex min-w-0 flex-1 flex-col py-2 pr-3 sm:py-3 sm:pr-4">
         <div className="mb-1 flex items-start justify-between gap-2">
-          <Link href={`/products/${product.id}`} className="min-w-0">
+          <Link href={`/products/${product.slug}`} className="min-w-0">
             <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 transition hover:text-violet-700 sm:text-base">
               {product.name}
             </h3>

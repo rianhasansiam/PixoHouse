@@ -4,6 +4,8 @@ import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+import { resolveColorValue } from '@/components/ui/tailwind-palette'
+
 type PromoBanner = {
   id: string
   image: string
@@ -29,7 +31,8 @@ const PromoBanners: React.FC<PromoBannersProps> = ({ banners }) => {
         <Link
           key={banner.id}
           href={banner.link ?? "#"}
-          className={`block relative h-48 rounded-2xl overflow-hidden ${banner.bgClass} group`}
+          style={{ backgroundColor: resolveColorValue(banner.bgClass) ?? "#6d28d9" }}
+          className="block relative h-48 rounded-2xl overflow-hidden group"
         >
           <Image
             src={banner.image}

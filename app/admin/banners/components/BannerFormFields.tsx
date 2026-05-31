@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  CAROUSEL_BG_TYPES,
   STATUS_VALUES,
   type BannerStatus,
+  type CarouselBgType,
   type CarouselFormState,
   type CategoryBannerFormState,
   type DealFormState,
@@ -11,6 +13,7 @@ import {
 } from "@/features/admin-banners/api";
 import type { CategoryOption } from "@/features/admin-products/api";
 import ImageUploader from "@/components/ui/ImageUploader";
+import AdvancedColorPicker from "@/components/ui/AdvancedColorPicker";
 
 import Field from "./Field";
 
@@ -65,32 +68,54 @@ export function CarouselFormFields({
           placeholder="Short marketing copy"
         />
       </Field>
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="bgFrom" required>
-          <input
-            value={form.bgFrom}
-            onChange={(e) => update("bgFrom", e.target.value)}
-            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-            placeholder="from-green-500"
+      <Field label="Background style" required>
+        <select
+          value={form.bgType}
+          onChange={(e) =>
+            update("bgType", e.target.value as CarouselBgType)
+          }
+          className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
+        >
+          {CAROUSEL_BG_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type === "gradient" ? "Gradient" : "Solid color"}
+            </option>
+          ))}
+        </select>
+      </Field>
+      {form.bgType === "solid" ? (
+        <Field label="Background color" required>
+          <AdvancedColorPicker
+            label="Background color"
+            value={form.bgColor}
+            onChange={(value) => update("bgColor", value)}
           />
         </Field>
-        <Field label="bgVia">
-          <input
-            value={form.bgVia}
-            onChange={(e) => update("bgVia", e.target.value)}
-            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-            placeholder="via-emerald-600"
-          />
-        </Field>
-        <Field label="bgTo" required>
-          <input
-            value={form.bgTo}
-            onChange={(e) => update("bgTo", e.target.value)}
-            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-            placeholder="to-green-800"
-          />
-        </Field>
-      </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="From" required>
+            <AdvancedColorPicker
+              label="Gradient from color"
+              value={form.bgFrom}
+              onChange={(value) => update("bgFrom", value)}
+            />
+          </Field>
+          <Field label="Via">
+            <AdvancedColorPicker
+              label="Gradient via color"
+              value={form.bgVia}
+              onChange={(value) => update("bgVia", value)}
+            />
+          </Field>
+          <Field label="To" required>
+            <AdvancedColorPicker
+              label="Gradient to color"
+              value={form.bgTo}
+              onChange={(value) => update("bgTo", value)}
+            />
+          </Field>
+        </div>
+      )}
       <Field label="Link">
         <input
           value={form.link}
@@ -255,12 +280,11 @@ export function DealFormFields({
           />
         </Field>
       </div>
-      <Field label="Background utility class" required>
-        <input
+      <Field label="Background color" required>
+        <AdvancedColorPicker
+          label="Deal background color"
           value={form.bgClass}
-          onChange={(e) => update("bgClass", e.target.value)}
-          className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-          placeholder="bg-rose-500"
+          onChange={(value) => update("bgClass", value)}
         />
       </Field>
       <Field label="Link">
@@ -343,12 +367,11 @@ export function PromoFormFields({
           placeholder="UP TO 60% OFF"
         />
       </Field>
-      <Field label="Background utility class" required>
-        <input
+      <Field label="Background color" required>
+        <AdvancedColorPicker
+          label="Promo background color"
           value={form.bgClass}
-          onChange={(e) => update("bgClass", e.target.value)}
-          className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
-          placeholder="bg-violet-700"
+          onChange={(value) => update("bgClass", value)}
         />
       </Field>
       <Field label="Link">

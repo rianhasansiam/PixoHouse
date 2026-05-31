@@ -119,6 +119,7 @@ export default async function CategoryPage({ params }: Props) {
                 <ProductCard
                   key={product.id}
                   id={product.id}
+                  slug={product.slug}
                   name={product.name}
                   price={product.discountPrice ?? product.price}
                   originalPrice={

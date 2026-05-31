@@ -3,6 +3,7 @@
 import { Package } from "lucide-react";
 
 import type { CheckoutItemPriced } from "@/features/checkout/api";
+import ColorBadge from "@/components/ui/ColorBadge";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
@@ -43,7 +44,6 @@ export default function CheckoutItemsCard({
           {items.map((item) => {
             const savings =
               (item.originalPrice - item.unitPrice) * item.quantity;
-            const variantParts = [item.color, item.size].filter(Boolean);
             return (
               <li
                 key={item.variantId || item.productId}
@@ -61,11 +61,11 @@ export default function CheckoutItemsCard({
                   <p className="truncate text-sm font-semibold text-gray-900">
                     {item.name}
                   </p>
-                  {variantParts.length > 0 && (
-                    <p className="mt-0.5 truncate text-[11px] font-medium text-violet-600">
-                      {variantParts.join(" / ")}
-                    </p>
-                  )}
+                  <ColorBadge
+                    color={item.color}
+                    size={item.size}
+                    className="mt-0.5"
+                  />
                   <p className="mt-0.5 text-xs text-gray-500">
                     Qty {item.quantity} • BDT{" "}
                     {item.unitPrice.toLocaleString()} each

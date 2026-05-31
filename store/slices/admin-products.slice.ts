@@ -13,7 +13,8 @@ type AdminProduct = {
   images: string[];
   rating: number;
   reviewCount: number;
-  badge: string | null;
+  color: string | null;
+  size: string | null;
   status: ProductStatus;
   stock: number;
   createdAt: string;
