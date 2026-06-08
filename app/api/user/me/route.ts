@@ -49,10 +49,39 @@ export async function GET(request: NextRequest) {
         provider: true,
         createdAt: true,
         updatedAt: true,
+        // Pull the saved shipping address (default first, else newest) so
+        // the checkout form can prefill street/city/postal/area too. The
+        // checkout client reads these optional fields when present.
+        addresses: {
+          orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+          take: 1,
+          select: {
+            fullName: true,
+            phone: true,
+            city: true,
+            area: true,
+            address: true,
+            postalCode: true,
+          },
+        },
       },
     });
     if (!user) return jsonError(404, "User not found.");
-    return ok(user);
+
+    const { addresses, ...profile } = user;
+    const savedAddress = addresses[0] ?? null;
+
+    // Flatten the best saved address into the profile payload. User-level
+    // fields (phone/city) win when set; the address backfills what's
+    // missing so the checkout form gets the most complete picture.
+    return ok({
+      ...profile,
+      phone: profile.phone ?? savedAddress?.phone ?? null,
+      city: profile.city ?? savedAddress?.city ?? null,
+      address: savedAddress?.address ?? null,
+      area: savedAddress?.area ?? null,
+      postalCode: savedAddress?.postalCode ?? null,
+    });
   } catch (error) {
     return handleServiceError("user.me.GET", error);
   }

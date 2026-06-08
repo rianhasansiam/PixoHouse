@@ -494,9 +494,30 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
 
   const summary = summarize(lines, promo, settings);
 
+  // Email is identity-bound: always resolve it from the authenticated
+  // user's DB record, never from the request body. Even if the client
+  // tampers with the (disabled) email field via dev tools, the order
+  // is stamped with the account's real email.
+  const account = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!account) {
+    throw new CheckoutError(
+      401,
+      "Your account could not be found. Please sign in again.",
+    );
+  }
+  const accountEmail = account.email?.trim().toLowerCase();
+  if (!accountEmail) {
+    throw new CheckoutError(
+      400,
+      "Your account is missing an email address. Please add one on your profile page before checking out.",
+    );
+  }
+
   const orderNumber = generateOrderNumber();
-  const trimmedEmail = input.customerEmail?.trim().toLowerCase();
-  const customerEmail = trimmedEmail ? trimmedEmail : null;
+  const customerEmail = accountEmail;
   const trimmedCity = input.customerCity?.trim();
   const customerCity = trimmedCity ? trimmedCity : null;
   const trimmedPostal = input.customerPostalCode?.trim();

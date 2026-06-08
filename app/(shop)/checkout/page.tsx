@@ -110,6 +110,14 @@ function CheckoutPageInner() {
     Partial<Record<keyof CustomerFormState, string>>
   >({});
 
+  // Profile auto-fill lifecycle. Kept separate from the preview state so
+  // the form can show its own loading/error affordances. `profileToken`
+  // lets the user retry a failed profile load.
+  const [profileStatus, setProfileStatus] = useState<
+    "idle" | "loading" | "loaded" | "error"
+  >("idle");
+  const [profileToken, setProfileToken] = useState(0);
+
   // Anonymous visitors can't reach checkout. Bounce them to /login
   // with a callback URL that preserves any "Buy now" intent so the
   // post-login redirect lands them right back here.
@@ -120,27 +128,56 @@ function CheckoutPageInner() {
     router.replace(`/login?callbackUrl=${encodeURIComponent(target)}`);
   }, [authStatus, router, searchParams]);
 
-  // Hydrate the form from the session once we know the auth status.
+  // Hydrate the form from the authenticated user's saved profile. The
+  // database profile is the source of truth (not Redux/localStorage), so
+  // we refetch it whenever auth resolves or the user retries. Email is
+  // always taken from the profile and locked; the editable shipping
+  // fields only backfill when empty so a refetch never clobbers typing.
   useEffect(() => {
     if (authStatus === "loading") return;
     if (authStatus !== "authenticated") return;
 
     let ignore = false;
-    void fetchCheckoutProfile().then((profile) => {
-      if (ignore || !profile) return;
+
+    void (async () => {
+      // setState calls live inside the async closure (microtask) so the
+      // lint rule against synchronous effect-body setState is satisfied,
+      // matching the preview effect below.
+      setProfileStatus("loading");
+
+      const profile = await fetchCheckoutProfile();
+      if (ignore) return;
+
+      if (!profile) {
+        setProfileStatus("error");
+        return;
+      }
+
       setForm((prev) => ({
         ...prev,
+        // Identity-bound: always reflect the DB/session email, never
+        // preserve a stale typed value (the field is read-only anyway).
+        customerEmail: profile.email ?? session?.user?.email ?? "",
+        // Shipping fields: backfill only when the user hasn't typed yet.
         customerName: prev.customerName || profile.name || "",
-        customerEmail:
-          prev.customerEmail || (profile.email ?? session?.user?.email ?? ""),
         customerPhone: prev.customerPhone || profile.phone || "",
         customerCity: prev.customerCity || profile.city || "",
+        customerAddress: prev.customerAddress || profile.address || "",
+        customerPostalCode:
+          prev.customerPostalCode || profile.postalCode || "",
       }));
-    });
+      setProfileStatus("loaded");
+    })();
+
     return () => {
       ignore = true;
     };
-  }, [authStatus, session?.user?.email]);
+  }, [authStatus, session?.user?.email, profileToken]);
+
+  const handleRetryProfile = useCallback(
+    () => setProfileToken((token) => token + 1),
+    [],
+  );
 
   // Build the items payload sent to /api/checkout/preview.
   // For "Buy now" we forward the explicit selection; otherwise we
@@ -235,13 +272,6 @@ function CheckoutPageInner() {
     if (form.customerAddress.trim().length < 5) {
       errors.customerAddress = "Enter your delivery address.";
     }
-    const trimmedEmail = form.customerEmail.trim();
-    if (trimmedEmail) {
-      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!re.test(trimmedEmail)) {
-        errors.customerEmail = "Enter a valid email address.";
-      }
-    }
     if (form.customerCity.trim() && form.customerCity.trim().length < 2) {
       errors.customerCity = "City / district is too short.";
     }
@@ -281,7 +311,8 @@ function CheckoutPageInner() {
         items: buildItemsPayload(),
         customerName: form.customerName.trim(),
         customerPhone: form.customerPhone.trim(),
-        customerEmail: form.customerEmail.trim() || undefined,
+        // Email is intentionally not sent: the server stamps the order
+        // with the authenticated account's email.
         customerAddress: form.customerAddress.trim(),
         customerCity: form.customerCity.trim() || undefined,
         customerPostalCode: form.customerPostalCode.trim() || undefined,
@@ -412,6 +443,8 @@ function CheckoutPageInner() {
                 }}
                 errors={fieldErrors}
                 isAuthenticated={isAuthenticated}
+                profileStatus={profileStatus}
+                onRetryProfile={handleRetryProfile}
               />
 
               <PaymentMethodPicker

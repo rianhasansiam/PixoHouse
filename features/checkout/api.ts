@@ -83,7 +83,9 @@ export type PlaceOrderRequest = {
   items?: CheckoutItemInput[];
   customerName: string;
   customerPhone: string;
-  customerEmail?: string;
+  // Email is intentionally omitted: for authenticated checkout the server
+  // always stamps the order with the account's DB email, so the client
+  // never sends (or can override) it.
   customerAddress: string;
   customerCity?: string;
   customerPostalCode?: string;
@@ -121,6 +123,9 @@ export type CheckoutProfile = {
   email: string;
   phone: string | null;
   city: string | null;
+  address: string | null;
+  area: string | null;
+  postalCode: string | null;
 };
 
 export async function fetchCheckoutProfile(): Promise<CheckoutProfile | null> {
