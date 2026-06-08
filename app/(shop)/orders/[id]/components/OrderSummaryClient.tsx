@@ -157,7 +157,7 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
       // Yield a frame so the loading state can paint before jsPDF
       // takes the main thread.
       await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-      downloadOrderPdf(order);
+      await downloadOrderPdf(order);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to generate PDF.";

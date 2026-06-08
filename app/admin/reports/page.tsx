@@ -98,7 +98,7 @@ export default function AdminReportsPage() {
       // Yield a frame so the spinner can paint before jsPDF blocks
       // the main thread on big reports.
       await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-      downloadReportPdf(reportState.payload);
+      await downloadReportPdf(reportState.payload);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to build PDF.";

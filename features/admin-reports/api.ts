@@ -264,8 +264,13 @@ export async function fetchReport(args: FetchArgs): Promise<ReportPayload> {
 /* -------------------------------------------------------------------------- */
 
 export function formatCurrency(value: number, currency = "BDT"): string {
-  return `${currency} ${value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
+  const safe = Number.isFinite(value) ? value : 0;
+  // Round to 2dp first to dodge floating-point noise (e.g. 2579.1000001),
+  // then only show decimals when they carry information.
+  const rounded = Math.round((safe + Number.EPSILON) * 100) / 100;
+  const hasFraction = Math.abs(rounded % 1) > 0.0001;
+  return `${currency} ${rounded.toLocaleString("en-US", {
+    minimumFractionDigits: hasFraction ? 2 : 0,
     maximumFractionDigits: 2,
   })}`;
 }

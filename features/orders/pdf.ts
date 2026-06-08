@@ -1,347 +1,397 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-import type { OrderDetail } from "@/features/orders/api";
+import type {
+  OrderDetail,
+  OrderItem,
+  OrderPaymentMethod,
+} from "@/features/orders/api";
+import {
+  badgeFor,
+  drawBadge,
+  drawBrandFooter,
+  drawBrandHeader,
+  drawCard,
+  drawSectionLabel,
+  ensureSpace,
+  formatBDT,
+  formatStamp,
+  getAutoTableEndY,
+  HEADER_HEIGHT,
+  LINE_HEIGHT,
+  loadBrandLogo,
+  PAGE_MARGIN,
+  paintBackground,
+  PDF_COLORS as C,
+  safeText,
+  STORE_INFO,
+  titleCase,
+  type Doc,
+  type RGB,
+} from "@/features/branding/pdf";
 
 /**
- * Builds a downloadable order invoice / receipt PDF.
+ * Builds a downloadable, premium-styled order receipt PDF.
  *
  * Generation runs entirely in the browser (jsPDF + jspdf-autotable)
  * so we don't need a headless browser on the server. The same
  * `OrderDetail` payload that the page renders on screen is the
  * source of truth here, which keeps the visible receipt and the
  * downloaded PDF in lockstep.
+ *
+ * Only customer-facing fields are rendered — never admin-only data
+ * such as buying price (which isn't part of `OrderDetail` anyway).
+ * Shared brand chrome (palette, logo, header, footer) lives in
+ * `features/branding/pdf`.
  */
 
-const COLORS = {
-  brandFrom: [124, 58, 237] as [number, number, number], // violet-600
-  brandTo: [79, 70, 229] as [number, number, number], // indigo-600
-  text: [33, 37, 41] as [number, number, number],
-  muted: [108, 117, 125] as [number, number, number],
-  divider: [233, 213, 255] as [number, number, number], // violet-200
-};
-
-const PAGE_MARGIN = 14;
-
-const STORE_INFO = {
-  name: "EnterFly",
-  tagline: "Local Marketplace · enterfly26@gmail.com",
-  address: "Mirpur, Dhaka, Bangladesh",
-  email: "enterfly26@gmail.com",
-};
-
-type Doc = jsPDF;
-
-function formatBdt(value: number): string {
-  return `BDT ${value.toLocaleString()}`;
+function paymentMethodLabel(method: OrderPaymentMethod | string): string {
+  return method === "ONLINE" ? "Online payment" : "Cash on delivery";
 }
 
-function formatDateTime(value: string): string {
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
+/** Variant / SKU descriptor for an item, dropping raw hex colour swatches. */
+function buildVariantText(item: OrderItem): string {
+  const isHex =
+    typeof item.color === "string" &&
+    /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(item.color.trim());
+  const variant = [isHex ? null : item.color, item.size]
+    .map((part) => safeText(part))
+    .filter(Boolean)
+    .join(" / ");
+  const segments: string[] = [];
+  if (variant) segments.push(variant);
+  if (item.sku) segments.push(`SKU: ${safeText(item.sku)}`);
+  return segments.join("   ·   ") || "—";
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Sections                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function drawSummaryStrip(doc: Doc, y: number, order: OrderDetail): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const x = PAGE_MARGIN;
+  const w = pw - PAGE_MARGIN * 2;
+  const h = 24;
+
+  drawCard(doc, x, y, w, h);
+
+  // Order ID — highly visible.
+  drawSectionLabel(doc, x + 6, y + 7, "Order ID");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(...C.text);
+  doc.text(`#${safeText(order.orderNumber, "—")}`, x + 6, y + 15);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...C.muted);
+  doc.text(`Placed on ${formatStamp(order.createdAt)}`, x + 6, y + 20.5);
+
+  // Status badges, stacked on the right.
+  const rightX = x + w - 6;
+  drawBadge(doc, rightX, y + 6, titleCase(order.status), badgeFor(order.status), "right");
+  drawBadge(
+    doc,
+    rightX,
+    y + 14.5,
+    titleCase(order.paymentStatus),
+    badgeFor(order.paymentStatus),
+    "right",
+  );
+
+  return y + h + 6;
+}
+
+type InfoLine = { text: string; bold?: boolean; color?: RGB };
+
+function drawInfoCard(
+  doc: Doc,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  lines: InfoLine[][],
+): void {
+  drawCard(doc, x, y, w, h);
+  drawSectionLabel(doc, x + 6, y + 7, label);
+  let ty = y + 13.5;
+  for (const group of lines) {
+    const [{ bold, color }] = group;
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...(color ?? C.text));
+    for (const segment of group) {
+      doc.text(segment.text, x + 6, ty);
+      ty += LINE_HEIGHT;
+    }
   }
 }
 
-function getNextY(doc: Doc, fallback: number): number {
-  const last = (doc as unknown as { lastAutoTable?: { finalY: number } })
-    .lastAutoTable;
-  return (last?.finalY ?? fallback) + 8;
-}
-
-function drawHeader(doc: Doc, order: OrderDetail) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  doc.setFillColor(...COLORS.brandFrom);
-  doc.rect(0, 0, pageWidth, 26, "F");
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.text(STORE_INFO.name, PAGE_MARGIN, 12);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(STORE_INFO.tagline, PAGE_MARGIN, 18);
-
-  doc.setFontSize(9);
-  doc.text(
-    `Generated: ${new Date().toLocaleString()}`,
-    pageWidth - PAGE_MARGIN,
-    18,
-    { align: "right" },
-  );
-
-  doc.setTextColor(...COLORS.text);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Order Receipt", PAGE_MARGIN, 40);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.muted);
-  doc.text(`Order #${order.orderNumber}`, PAGE_MARGIN, 47);
-  doc.text(`Placed on ${formatDateTime(order.createdAt)}`, PAGE_MARGIN, 53);
-
-  doc.setDrawColor(...COLORS.divider);
-  doc.setLineWidth(0.4);
-  doc.line(PAGE_MARGIN, 58, pageWidth - PAGE_MARGIN, 58);
-}
-
-function drawTwoColumnTable(
+/** Wrap each info line and tag every wrapped segment with its style. */
+function wrapInfoLines(
   doc: Doc,
-  startY: number,
-  title: string,
-  rows: Array<[string, string]>,
-): number {
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.brandTo);
-  doc.text(title, PAGE_MARGIN, startY);
+  lines: InfoLine[],
+  width: number,
+): { groups: InfoLine[][]; count: number } {
+  let count = 0;
+  const groups = lines.map((line) => {
+    doc.setFont("helvetica", line.bold ? "bold" : "normal");
+    doc.setFontSize(9);
+    const parts = doc.splitTextToSize(line.text, width) as string[];
+    count += parts.length;
+    return parts.map((text) => ({ ...line, text }));
+  });
+  return { groups, count };
+}
 
-  autoTable(doc, {
-    startY: startY + 3,
-    body: rows,
-    theme: "plain",
-    styles: {
-      fontSize: 9.5,
-      cellPadding: { top: 1.4, right: 2, bottom: 1.4, left: 0 },
-      textColor: COLORS.text,
-    },
-    columnStyles: {
-      0: { cellWidth: 38, fontStyle: "bold", textColor: COLORS.muted },
-      1: { cellWidth: "auto" },
-    },
-    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
+function drawPartyCards(doc: Doc, y: number, order: OrderDetail): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const gap = 6;
+  const w = (pw - PAGE_MARGIN * 2 - gap) / 2;
+  const leftX = PAGE_MARGIN;
+  const rightX = PAGE_MARGIN + w + gap;
+  const innerW = w - 12;
+
+  const fromLines: InfoLine[] = [
+    { text: STORE_INFO.name, bold: true, color: C.text },
+    { text: STORE_INFO.address, color: C.muted },
+    { text: STORE_INFO.email, color: C.muted },
+  ];
+
+  const billLines: InfoLine[] = [
+    { text: safeText(order.customerName, "Customer"), bold: true, color: C.text },
+  ];
+  if (order.customerEmail) {
+    billLines.push({ text: safeText(order.customerEmail), color: C.muted });
+  }
+  if (safeText(order.customerPhone)) {
+    billLines.push({ text: safeText(order.customerPhone), color: C.muted });
+  }
+  if (safeText(order.customerAddress)) {
+    billLines.push({ text: safeText(order.customerAddress), color: C.muted });
+  }
+  const cityLine = [order.customerCity, order.customerPostalCode]
+    .map((part) => safeText(part))
+    .filter(Boolean)
+    .join(" ");
+  if (cityLine) {
+    billLines.push({ text: cityLine, color: C.muted });
+  }
+
+  const from = wrapInfoLines(doc, fromLines, innerW);
+  const bill = wrapInfoLines(doc, billLines, innerW);
+  const maxCount = Math.max(from.count, bill.count);
+  const cardH = 13.5 + maxCount * LINE_HEIGHT + 3;
+
+  drawInfoCard(doc, leftX, y, w, cardH, "From / Seller", from.groups);
+  drawInfoCard(doc, rightX, y, w, cardH, "Bill To / Ship To", bill.groups);
+
+  return y + cardH + 6;
+}
+
+function drawOrderInfoCard(doc: Doc, y: number, order: OrderDetail): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const x = PAGE_MARGIN;
+  const w = pw - PAGE_MARGIN * 2;
+  const h = 23;
+
+  drawCard(doc, x, y, w, h);
+  drawSectionLabel(doc, x + 6, y + 7, "Order Information");
+
+  const cols = [
+    { label: "Order Date", value: formatStamp(order.createdAt) },
+    { label: "Order Status", value: titleCase(order.status) },
+    { label: "Payment Method", value: paymentMethodLabel(order.paymentMethod) },
+    { label: "Payment Status", value: titleCase(order.paymentStatus) },
+  ];
+  const colW = (w - 12) / cols.length;
+
+  cols.forEach((col, i) => {
+    const cx = x + 6 + i * colW;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.muted);
+    doc.text(col.label.toUpperCase(), cx, y + 13.5);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(...C.text);
+    doc.text(doc.splitTextToSize(col.value, colW - 3) as string[], cx, y + 19);
   });
 
-  return getNextY(doc, startY);
+  return y + h + 6;
 }
 
-function drawItemsTable(doc: Doc, startY: number, order: OrderDetail): number {
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.brandTo);
-  doc.text("Items", PAGE_MARGIN, startY);
+function drawItemsTable(doc: Doc, y: number, order: OrderDetail): number {
+  drawSectionLabel(doc, PAGE_MARGIN, y + 2, "Order Items");
 
   autoTable(doc, {
-    startY: startY + 3,
-    head: [["Product", "Qty", "Unit", "Line total"]],
-    body: order.items.map((item) => {
-      // A hex color (picked in admin) is a swatch on screen; in the PDF we
-      // only have text, so drop hex values and keep readable names/sizes.
-      const isHex =
-        typeof item.color === "string" &&
-        /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(item.color.trim());
-      const variantParts = [isHex ? null : item.color, item.size].filter(
-        Boolean,
-      );
-      const productCell = variantParts.length > 0
-        ? `${item.productName}\n(${variantParts.join(" / ")})`
-        : item.productName;
-      return [
-        productCell,
-        String(item.quantity),
-        formatBdt(item.unitPrice),
-        formatBdt(item.totalPrice),
-      ];
-    }),
+    startY: y + 5,
+    head: [["Product", "Variant / SKU", "Qty", "Unit price", "Line total"]],
+    body: order.items.map((item) => [
+      safeText(item.productName, "Item"),
+      buildVariantText(item),
+      String(item.quantity),
+      formatBDT(item.unitPrice),
+      formatBDT(item.totalPrice),
+    ]),
     theme: "striped",
     headStyles: {
-      fillColor: COLORS.brandFrom,
-      textColor: 255,
+      fillColor: C.primary,
+      textColor: C.white,
       fontStyle: "bold",
+      fontSize: 8.5,
+      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
     },
-    bodyStyles: { textColor: COLORS.text },
-    styles: { fontSize: 10, cellPadding: 3 },
+    bodyStyles: {
+      textColor: C.text,
+      fontSize: 9.5,
+      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      valign: "middle",
+    },
+    alternateRowStyles: { fillColor: C.zebra },
+    styles: { lineColor: C.border, lineWidth: 0.1, overflow: "linebreak" },
     columnStyles: {
-      0: { cellWidth: "auto" },
-      1: { cellWidth: 18, halign: "right" },
-      2: { cellWidth: 32, halign: "right" },
-      3: { cellWidth: 38, halign: "right" },
+      0: { cellWidth: "auto", fontStyle: "bold", textColor: C.text },
+      1: { cellWidth: 44, textColor: C.muted, fontSize: 8 },
+      2: { cellWidth: 13, halign: "right" },
+      3: { cellWidth: 28, halign: "right" },
+      4: { cellWidth: 30, halign: "right", fontStyle: "bold" },
     },
-    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
+    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, top: PAGE_MARGIN },
   });
 
-  return getNextY(doc, startY);
+  return getAutoTableEndY(doc, 10);
 }
 
-function drawTotals(doc: Doc, startY: number, order: OrderDetail): number {
-  const rows: Array<[string, string]> = [
-    ["Subtotal", formatBdt(order.subtotal)],
-  ];
+function drawTotals(doc: Doc, y: number, order: OrderDetail): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const w = 88;
+  const x = pw - PAGE_MARGIN - w;
+
+  const rows: Array<[string, string]> = [["Subtotal", formatBDT(order.subtotal)]];
   if (order.discountAmount > 0) {
-    const promoLabel = order.promoCode
-      ? `Discount (${order.promoCode})`
+    const label = order.promoCode
+      ? `Discount (${safeText(order.promoCode)})`
       : "Discount";
-    rows.push([promoLabel, `-${formatBdt(order.discountAmount)}`]);
+    rows.push([label, `- ${formatBDT(order.discountAmount)}`]);
   }
   rows.push([
     "Delivery charge",
-    order.deliveryCharge === 0 ? "FREE" : formatBdt(order.deliveryCharge),
+    order.deliveryCharge === 0 ? "FREE" : formatBDT(order.deliveryCharge),
   ]);
   if (order.taxAmount > 0) {
-    rows.push(["Tax", formatBdt(order.taxAmount)]);
+    rows.push(["Tax", formatBDT(order.taxAmount)]);
   }
-  rows.push(["Grand total", formatBdt(order.totalAmount)]);
 
-  autoTable(doc, {
-    startY,
-    body: rows,
-    theme: "plain",
-    styles: {
-      fontSize: 10.5,
-      cellPadding: { top: 1.6, right: 2, bottom: 1.6, left: 0 },
-      textColor: COLORS.text,
-    },
-    columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold", textColor: COLORS.muted },
-      1: { cellWidth: "auto", halign: "right" },
-    },
-    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    didParseCell: (data) => {
-      if (data.row.index === rows.length - 1) {
-        data.cell.styles.fontStyle = "bold";
-        data.cell.styles.textColor = COLORS.brandTo;
-        data.cell.styles.fontSize = 12;
-      }
-    },
+  const rowH = 6.2;
+  const grandH = 12;
+  const cardH = 13.5 + rows.length * rowH + 2 + grandH + 4;
+
+  drawCard(doc, x, y, w, cardH);
+  drawSectionLabel(doc, x + 6, y + 7, "Payment Summary");
+
+  let ry = y + 14;
+  doc.setFontSize(9.5);
+  for (const [label, value] of rows) {
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...C.muted);
+    doc.text(label, x + 6, ry);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...C.text);
+    doc.text(value, x + w - 6, ry, { align: "right" });
+    ry += rowH;
+  }
+
+  // Highlighted grand total — the strongest element on the page.
+  const barY = y + cardH - grandH - 3;
+  doc.setFillColor(...C.primary);
+  doc.roundedRect(x + 4, barY, w - 8, grandH, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...C.white);
+  doc.setFontSize(9);
+  doc.text("GRAND TOTAL", x + 8, barY + grandH / 2 + 1);
+  doc.setFontSize(13);
+  doc.text(formatBDT(order.totalAmount), x + w - 8, barY + grandH / 2 + 1.2, {
+    align: "right",
   });
 
-  return getNextY(doc, startY);
+  return y + cardH + 6;
 }
 
-function drawFooter(doc: Doc) {
-  const pageCount = doc.getNumberOfPages();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
+function drawNoteCard(doc: Doc, y: number, note: string): number {
+  const pw = doc.internal.pageSize.getWidth();
+  const x = PAGE_MARGIN;
+  const w = pw - PAGE_MARGIN * 2;
+  const innerW = w - 16;
 
-  for (let page = 1; page <= pageCount; page += 1) {
-    doc.setPage(page);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...COLORS.muted);
-    doc.text(
-      `Thank you for shopping with ${STORE_INFO.name}.`,
-      PAGE_MARGIN,
-      pageHeight - 8,
-    );
-    doc.text(
-      `Page ${page} of ${pageCount}`,
-      pageWidth - PAGE_MARGIN,
-      pageHeight - 8,
-      { align: "right" },
-    );
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  const parts = doc.splitTextToSize(note, innerW) as string[];
+  const cardH = 13.5 + parts.length * LINE_HEIGHT + 3;
+
+  y = ensureSpace(doc, y, cardH + 4);
+
+  drawCard(doc, x, y, w, cardH);
+  // Accent bar for a premium touch.
+  doc.setFillColor(...C.primary);
+  doc.roundedRect(x, y, 2.5, cardH, 1, 1, "F");
+
+  drawSectionLabel(doc, x + 7, y + 7, "Customer Note");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...C.muted);
+  let ty = y + 13.5;
+  for (const part of parts) {
+    doc.text(part, x + 7, ty);
+    ty += LINE_HEIGHT;
   }
+
+  return y + cardH + 6;
 }
 
-export function generateOrderPdf(order: OrderDetail): jsPDF {
+/* -------------------------------------------------------------------------- */
+/*  Public API                                                                */
+/* -------------------------------------------------------------------------- */
+
+export { formatBDT };
+
+export async function generateOrderPdf(order: OrderDetail): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
 
-  drawHeader(doc, order);
+  const logo = await loadBrandLogo();
 
-  let y = 66;
+  paintBackground(doc);
+  drawBrandHeader(doc, {
+    logo,
+    pillText: "Order Receipt",
+    subtitle: `${STORE_INFO.tagline}  ·  ${STORE_INFO.email}`,
+  });
 
-  // Two side-by-side info blocks: store + customer.
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const half = (pageWidth - PAGE_MARGIN * 2) / 2;
-
-  // Left column: store info (re-rendered below the header so it shows on the receipt).
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.brandTo);
-  doc.text("From", PAGE_MARGIN, y);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  doc.setTextColor(...COLORS.text);
-  doc.text(STORE_INFO.name, PAGE_MARGIN, y + 6);
-  doc.setTextColor(...COLORS.muted);
-  doc.text(STORE_INFO.address, PAGE_MARGIN, y + 11);
-  doc.text(STORE_INFO.email, PAGE_MARGIN, y + 16);
-
-  // Right column: customer info.
-  const rightX = PAGE_MARGIN + half + 4;
-  const billToWidth = pageWidth - rightX - PAGE_MARGIN;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.brandTo);
-  doc.text("Bill to", rightX, y);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  const lineHeight = 5;
-
-  const writeBillToLine = (
-    text: string,
-    color: [number, number, number],
-  ): void => {
-    if (!text) return;
-    doc.setTextColor(...color);
-    const wrapped = doc.splitTextToSize(text, billToWidth) as string[];
-    doc.text(wrapped, rightX, customerY);
-    // Advance by the actual number of rendered lines so wrapped text
-    // (long addresses, long emails) doesn't paint on top of itself.
-    customerY += wrapped.length * lineHeight;
-  };
-
-  let customerY = y + 6;
-  writeBillToLine(order.customerName, COLORS.text);
-  if (order.customerEmail) {
-    writeBillToLine(order.customerEmail, COLORS.muted);
-  }
-  writeBillToLine(order.customerPhone, COLORS.muted);
-
-  if (order.customerAddress) {
-    writeBillToLine(order.customerAddress, COLORS.muted);
-  }
-  const cityLine = [order.customerCity, order.customerPostalCode]
-    .filter((part): part is string => Boolean(part))
-    .join(" ");
-  if (cityLine) {
-    writeBillToLine(cityLine, COLORS.muted);
-  }
-
-  y = Math.max(customerY, y + 22) + 4;
-
-  y = drawTwoColumnTable(doc, y, "Order info", [
-    ["Order #", order.orderNumber],
-    ["Order date", formatDateTime(order.createdAt)],
-    ["Order status", order.status],
-    [
-      "Payment method",
-      order.paymentMethod === "ONLINE" ? "Pay now" : "Cash on delivery",
-    ],
-    ["Payment status", order.paymentStatus],
-  ]);
-
+  let y = HEADER_HEIGHT + 8;
+  y = drawSummaryStrip(doc, y, order);
+  y = drawPartyCards(doc, y, order);
+  y = drawOrderInfoCard(doc, y, order);
   y = drawItemsTable(doc, y, order);
+
+  y = ensureSpace(doc, y, 76);
   y = drawTotals(doc, y, order);
 
-  if (order.customerNote) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...COLORS.brandTo);
-    doc.text("Note from customer", PAGE_MARGIN, y);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(...COLORS.muted);
-    doc.text(
-      doc.splitTextToSize(order.customerNote, pageWidth - PAGE_MARGIN * 2),
-      PAGE_MARGIN,
-      y + 6,
-    );
+  const note = safeText(order.customerNote);
+  if (note) {
+    y = drawNoteCard(doc, y, note);
   }
 
-  drawFooter(doc);
+  drawBrandFooter(doc, [
+    `Thank you for shopping with ${STORE_INFO.name}.`,
+    `For support, contact ${STORE_INFO.email}`,
+  ]);
 
   return doc;
 }
 
 /** Save the PDF with a sensible default filename. */
-export function downloadOrderPdf(order: OrderDetail) {
-  const doc = generateOrderPdf(order);
+export async function downloadOrderPdf(order: OrderDetail): Promise<void> {
+  const doc = await generateOrderPdf(order);
   doc.save(`EnterFly-${order.orderNumber}.pdf`);
 }
