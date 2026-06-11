@@ -58,7 +58,7 @@ export default function PromoFormDrawer({
 
           <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Code" required>
                   <input
                     value={form.code}
@@ -100,7 +100,7 @@ export default function PromoFormDrawer({
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Discount type" required>
                   <select
                     value={form.discountType}
@@ -141,7 +141,7 @@ export default function PromoFormDrawer({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Minimum order">
                   <input
                     type="number"
@@ -180,7 +180,7 @@ export default function PromoFormDrawer({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Starts at">
                   <input
                     type="datetime-local"

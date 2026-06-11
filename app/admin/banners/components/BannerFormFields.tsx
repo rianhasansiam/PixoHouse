@@ -34,7 +34,7 @@ export function CarouselFormFields({
       <Field label="Image" required>
         <ImageUploader value={form.image} onChange={(url) => update("image", url)} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Title" required>
           <input
             value={form.title}
@@ -92,7 +92,7 @@ export function CarouselFormFields({
           />
         </Field>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="From" required>
             <AdvancedColorPicker
               label="Gradient from color"
@@ -124,7 +124,7 @@ export function CarouselFormFields({
           placeholder="/products?category=grocery"
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Position" required>
           <input
             type="number"
@@ -186,7 +186,7 @@ export function CategoryBannerFormFields({
       <Field label="Image" required>
         <ImageUploader value={form.image} onChange={(url) => update("image", url)} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Label" required>
           <input
             value={form.label}
@@ -262,7 +262,7 @@ export function DealFormFields({
       <Field label="Image" required>
         <ImageUploader value={form.image} onChange={(url) => update("image", url)} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Title" required>
           <input
             value={form.title}
@@ -295,7 +295,7 @@ export function DealFormFields({
           placeholder="/products?sale=black-friday"
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Position" required>
           <input
             type="number"
@@ -341,7 +341,7 @@ export function PromoFormFields({
       <Field label="Image" required>
         <ImageUploader value={form.image} onChange={(url) => update("image", url)} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Title" required>
           <input
             value={form.title}
@@ -382,7 +382,7 @@ export function PromoFormFields({
           placeholder="/products?sale=mega"
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Position" required>
           <input
             type="number"
@@ -425,7 +425,7 @@ export function TopFormFields({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Icon name" required>
           <input
             value={form.icon}
@@ -483,7 +483,7 @@ export function TopFormFields({
           placeholder="/products?sort=deals"
         />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Position" required>
           <input
             type="number"

@@ -131,7 +131,7 @@ export default function ProductFormDrawer({
               </Field>
 
               {/* Pricing — buyingPrice is admin-only and never shown publicly. */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Buying Price" required>
                   <input
                     type="number"
@@ -164,7 +164,7 @@ export default function ProductFormDrawer({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Discount Price">
                   <input
                     type="number"
@@ -249,7 +249,7 @@ export default function ProductFormDrawer({
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <Field label="Size" required>
                             <input
                               value={variant.size}
@@ -272,7 +272,7 @@ export default function ProductFormDrawer({
                           </Field>
                         </div>
 
-                        <div className="mt-2 grid grid-cols-2 gap-2">
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <Field label="SKU">
                             <input
                               value={variant.sku}
