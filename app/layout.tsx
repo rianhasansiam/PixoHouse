@@ -4,6 +4,7 @@ import "./globals.css";
 
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
+import SiteChrome from "@/components/layout/SiteChrome";
 import TopBanner from "@/components/layout/TopBanner";
 import JsonLd from "@/components/seo/JsonLd";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo/json-ld";
@@ -88,10 +89,13 @@ export default function RootLayout({
       <body>
         <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
         <Providers>
-          <TopBanner />
-          <Navbar />
-          {children}
-          <Footer />
+          <SiteChrome
+            banner={<TopBanner />}
+            navbar={<Navbar />}
+            footer={<Footer />}
+          >
+            {children}
+          </SiteChrome>
         </Providers>
       </body>
     </html>

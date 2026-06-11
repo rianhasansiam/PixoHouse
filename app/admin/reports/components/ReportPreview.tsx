@@ -12,6 +12,7 @@ import {
   type InventoryReport,
   type OrdersReport,
   type ProductsReport,
+  type ProfitReport,
   type ReportPayload,
   type SalesReport,
 } from "@/features/admin-reports/api";
@@ -73,8 +74,10 @@ export default function ReportPreview({
         <div className="min-w-0">
           <h2 className="text-base font-bold text-gray-900">{def.subject}</h2>
           <p className="mt-0.5 text-xs text-gray-500">
-            {formatDate(payload.meta.from)} → {formatDate(payload.meta.to)} ·
-            generated {formatDateTime(payload.meta.generatedAt)}
+            {payload.meta.allTime
+              ? "All time"
+              : `${formatDate(payload.meta.from)} → ${formatDate(payload.meta.to)}`}{" "}
+            · generated {formatDateTime(payload.meta.generatedAt)}
           </p>
         </div>
 
@@ -97,6 +100,7 @@ export default function ReportPreview({
         {payload.sales && <SalesPreview report={payload.sales} />}
         {payload.orders && <OrdersPreview report={payload.orders} />}
         {payload.products && <ProductsPreview report={payload.products} />}
+        {payload.profit && <ProfitPreview report={payload.profit} />}
         {payload.inventory && <InventoryPreview report={payload.inventory} />}
         {payload.customers && <CustomersPreview report={payload.customers} />}
         {payload.categories && <CategoriesPreview report={payload.categories} />}
@@ -424,6 +428,81 @@ function ProductsPreview({ report }: { report: ProductsReport }) {
               row.unitsSold,
               formatCurrency(row.revenue),
               row.currentPrice != null ? formatCurrency(row.currentPrice) : "—",
+              row.currentStock != null ? String(row.currentStock) : "—",
+              row.status ?? "—",
+            ])}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ProfitPreview({ report }: { report: ProfitReport }) {
+  return (
+    <>
+      <div>
+        <SectionHeading>Summary</SectionHeading>
+        <div className="mt-2">
+          <StatGrid
+            items={[
+              {
+                label: "Revenue",
+                value: formatCurrency(report.summary.totalRevenue),
+              },
+              {
+                label: "Cost of goods",
+                value: formatCurrency(report.summary.totalCost),
+                tone: "muted",
+              },
+              {
+                label: "Gross profit",
+                value: formatCurrency(report.summary.grossProfit),
+                tone: report.summary.grossProfit < 0 ? "danger" : "default",
+              },
+              {
+                label: "Profit margin",
+                value: `${report.summary.profitMargin}%`,
+                tone: report.summary.profitMargin < 0 ? "danger" : "default",
+              },
+              {
+                label: "Units sold",
+                value: String(report.summary.unitsSold),
+              },
+              {
+                label: "Products tracked",
+                value: String(report.summary.productsTracked),
+              },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div>
+        <SectionHeading>Profit by product</SectionHeading>
+        <div className="mt-2">
+          <DataTable
+            headers={[
+              "#",
+              "Product",
+              "Category",
+              "Units",
+              "Revenue",
+              "Cost",
+              "Profit",
+              "Margin",
+              "Stock",
+              "Status",
+            ]}
+            rows={report.rows.map((row, idx) => [
+              idx + 1,
+              row.name,
+              row.category,
+              row.unitsSold,
+              formatCurrency(row.revenue),
+              formatCurrency(row.cost),
+              formatCurrency(row.profit),
+              `${row.margin}%`,
               row.currentStock != null ? String(row.currentStock) : "—",
               row.status ?? "—",
             ])}

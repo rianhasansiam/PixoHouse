@@ -33,12 +33,6 @@ function startOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
-function startOfPreviousMonth(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1),
-  );
-}
-
 function startOfDayUTC(date: Date): Date {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
@@ -141,72 +135,68 @@ export type DashboardOverview = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Headline stats (this month vs last month)                                 */
+/*  Headline stats (all-time totals)                                          */
 /* -------------------------------------------------------------------------- */
 
 async function loadStats(now: Date): Promise<DashboardStats> {
+  // The headline numbers are all-time totals. The trend pill still
+  // carries meaning: `previous` is the all-time figure as of the start
+  // of this month, so `delta` reflects how much this month's activity
+  // has grown the running total.
   const thisMonthStart = startOfMonth(now);
-  const lastMonthStart = startOfPreviousMonth(now);
-  // Inclusive lower bound, exclusive upper bound — easier to reason
-  // about than fiddling with end-of-day timestamps.
-  const lastMonthEnd = thisMonthStart;
 
-  const liveOrderWhere = (gte: Date, lt: Date): Prisma.OrderWhereInput => ({
-    createdAt: { gte, lt },
+  const liveOrderWhere = (range?: Prisma.DateTimeFilter): Prisma.OrderWhereInput => ({
+    ...(range ? { createdAt: range } : {}),
     status: { not: "CANCELLED" },
   });
 
-  const cancelledWhere = (gte: Date, lt: Date): Prisma.OrderWhereInput => ({
-    createdAt: { gte, lt },
+  const cancelledWhere = (range?: Prisma.DateTimeFilter): Prisma.OrderWhereInput => ({
+    ...(range ? { createdAt: range } : {}),
     status: "CANCELLED",
   });
 
   const [
-    revenueThis,
-    revenuePrev,
-    ordersThis,
-    ordersPrev,
-    cancelledThis,
-    cancelledPrev,
-    customersThis,
-    customersPrev,
+    revenueAll,
+    revenueBefore,
+    ordersAll,
+    ordersBefore,
+    cancelledAll,
+    cancelledBefore,
     customersTotal,
-    costItemsThis,
-    costItemsPrev,
+    customersBefore,
+    costItemsAll,
+    costItemsBefore,
   ] = await Promise.all([
     prisma.order.aggregate({
-      where: liveOrderWhere(thisMonthStart, new Date(now.getTime() + 1)),
+      where: liveOrderWhere(),
       _sum: { totalAmount: true },
       _count: { _all: true },
     }),
     prisma.order.aggregate({
-      where: liveOrderWhere(lastMonthStart, lastMonthEnd),
+      where: liveOrderWhere({ lt: thisMonthStart }),
       _sum: { totalAmount: true },
       _count: { _all: true },
     }),
     prisma.order.count({
-      where: liveOrderWhere(thisMonthStart, new Date(now.getTime() + 1)),
+      where: liveOrderWhere(),
     }),
     prisma.order.count({
-      where: liveOrderWhere(lastMonthStart, lastMonthEnd),
+      where: liveOrderWhere({ lt: thisMonthStart }),
     }),
     prisma.order.aggregate({
-      where: cancelledWhere(thisMonthStart, new Date(now.getTime() + 1)),
+      where: cancelledWhere(),
       _sum: { totalAmount: true },
       _count: { _all: true },
     }),
     prisma.order.aggregate({
-      where: cancelledWhere(lastMonthStart, lastMonthEnd),
+      where: cancelledWhere({ lt: thisMonthStart }),
       _sum: { totalAmount: true },
       _count: { _all: true },
-    }),
-    prisma.user.count({
-      where: { createdAt: { gte: thisMonthStart } },
-    }),
-    prisma.user.count({
-      where: { createdAt: { gte: lastMonthStart, lt: lastMonthEnd } },
     }),
     prisma.user.count(),
+    prisma.user.count({
+      where: { createdAt: { lt: thisMonthStart } },
+    }),
     // Cost of goods sold = sum(buyingPrice * quantity) over live order
     // items. Prisma can't aggregate a product of two columns, so we
     // pull the snapshots and fold them in JS. buyingPrice is nullable
@@ -214,14 +204,14 @@ async function loadStats(now: Date): Promise<DashboardStats> {
     prisma.orderItem.findMany({
       where: {
         buyingPrice: { not: null },
-        order: liveOrderWhere(thisMonthStart, new Date(now.getTime() + 1)),
+        order: liveOrderWhere(),
       },
       select: { quantity: true, buyingPrice: true },
     }),
     prisma.orderItem.findMany({
       where: {
         buyingPrice: { not: null },
-        order: liveOrderWhere(lastMonthStart, lastMonthEnd),
+        order: liveOrderWhere({ lt: thisMonthStart }),
       },
       select: { quantity: true, buyingPrice: true },
     }),
@@ -236,11 +226,11 @@ async function loadStats(now: Date): Promise<DashboardStats> {
 
   // Revenue: rounded BDT amounts.
   const revenue = buildStat(
-    money(toNumber(revenueThis._sum.totalAmount)),
-    money(toNumber(revenuePrev._sum.totalAmount)),
+    money(toNumber(revenueAll._sum.totalAmount)),
+    money(toNumber(revenueBefore._sum.totalAmount)),
   );
 
-  const orders = buildStat(ordersThis, ordersPrev);
+  const orders = buildStat(ordersAll, ordersBefore);
 
   // Profit = revenue - cost of goods sold for the same window.
   const sumCost = (
@@ -252,25 +242,15 @@ async function loadStats(now: Date): Promise<DashboardStats> {
     );
 
   const profit = buildStat(
-    money(money(toNumber(revenueThis._sum.totalAmount)) - sumCost(costItemsThis)),
-    money(money(toNumber(revenuePrev._sum.totalAmount)) - sumCost(costItemsPrev)),
+    money(money(toNumber(revenueAll._sum.totalAmount)) - sumCost(costItemsAll)),
+    money(money(toNumber(revenueBefore._sum.totalAmount)) - sumCost(costItemsBefore)),
   );
 
-  // Customers headline shows the live total; the delta is computed
-  // from new sign-ups in each month so it represents growth, not the
-  // absolute total going up.
-  const customersDelta = percentChange(customersThis, customersPrev);
-  const customers: DashboardStat = {
-    current: customersTotal,
-    previous: customersTotal - customersThis + customersPrev,
-    delta: customersDelta,
-    trend:
-      customersDelta > 0 ? "up" : customersDelta < 0 ? "down" : "flat",
-  };
+  const customers = buildStat(customersTotal, customersBefore);
 
   const cancellations = buildStat(
-    money(toNumber(cancelledThis._sum.totalAmount)),
-    money(toNumber(cancelledPrev._sum.totalAmount)),
+    money(toNumber(cancelledAll._sum.totalAmount)),
+    money(toNumber(cancelledBefore._sum.totalAmount)),
   );
   // For cancellations, "down" is good; the stat object stays signed
   // and the UI can decide which colour to use.

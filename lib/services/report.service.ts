@@ -47,6 +47,11 @@ function money(value: Parameters<typeof toNumber>[0]): number {
 function resolveWindow(query: ReportQueryInput) {
   const now = new Date();
 
+  // All-time mode: span from the epoch to now so every order is in range.
+  if (query.allTime) {
+    return { from: new Date(0), to: now };
+  }
+
   let to = query.to ? new Date(query.to) : now;
   // Widen to end-of-day when the caller passed a calendar date only.
   if (query.to && /^\d{4}-\d{2}-\d{2}$/.test(query.to)) {
@@ -392,7 +397,129 @@ async function buildProductsReport(window: Window, limit: number) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  4. Inventory report                                                       */
+/*  4. Profit report                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Profit-by-product: for non-cancelled orders in the window, folds each
+ * line's revenue (totalPrice snapshot) against its cost
+ * (buyingPrice * quantity snapshot) to derive gross profit and margin.
+ *
+ * buyingPrice is nullable on legacy/imported line items; those rows
+ * contribute 0 cost (and therefore show 100% margin), which is the
+ * honest "we don't know the cost" reading rather than a guess.
+ */
+async function buildProfitReport(window: Window, limit: number) {
+  const items = await prisma.orderItem.findMany({
+    where: {
+      productId: { not: null },
+      order: {
+        createdAt: { gte: window.from, lte: window.to },
+        status: { not: "CANCELLED" },
+      },
+    },
+    select: {
+      productId: true,
+      quantity: true,
+      totalPrice: true,
+      buyingPrice: true,
+    },
+  });
+
+  if (items.length === 0) {
+    return {
+      summary: {
+        totalRevenue: 0,
+        totalCost: 0,
+        grossProfit: 0,
+        profitMargin: 0,
+        unitsSold: 0,
+        productsTracked: 0,
+      },
+      rows: [],
+    };
+  }
+
+  const productMap = new Map<
+    string,
+    { units: number; revenue: number; cost: number }
+  >();
+  for (const item of items) {
+    if (item.productId == null) continue;
+    const bucket =
+      productMap.get(item.productId) ?? { units: 0, revenue: 0, cost: 0 };
+    bucket.units += item.quantity;
+    bucket.revenue = round2(bucket.revenue + toNumber(item.totalPrice));
+    bucket.cost = round2(
+      bucket.cost + toNumber(item.buyingPrice) * item.quantity,
+    );
+    productMap.set(item.productId, bucket);
+  }
+
+  const productIds = Array.from(productMap.keys());
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      category: { select: { name: true } },
+      variants: { select: { stock: true } },
+    },
+  });
+  const productInfo = new Map(products.map((p) => [p.id, p]));
+
+  const rows = Array.from(productMap.entries())
+    .map(([productId, agg]) => {
+      const info = productInfo.get(productId);
+      const profit = money(agg.revenue - agg.cost);
+      const margin =
+        agg.revenue > 0 ? round2((profit / agg.revenue) * 100) : 0;
+      return {
+        productId,
+        name: info?.name ?? "Deleted product",
+        category: info?.category?.name ?? "—",
+        unitsSold: agg.units,
+        revenue: money(agg.revenue),
+        cost: money(agg.cost),
+        profit,
+        margin,
+        currentStock: info
+          ? info.variants.reduce((sum, v) => sum + v.stock, 0)
+          : null,
+        status: info?.status ?? null,
+      };
+    })
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, limit);
+
+  const totalRevenue = money(
+    Array.from(productMap.values()).reduce((sum, b) => sum + b.revenue, 0),
+  );
+  const totalCost = money(
+    Array.from(productMap.values()).reduce((sum, b) => sum + b.cost, 0),
+  );
+  const grossProfit = money(totalRevenue - totalCost);
+  const unitsSold = Array.from(productMap.values()).reduce(
+    (sum, b) => sum + b.units,
+    0,
+  );
+
+  return {
+    summary: {
+      totalRevenue,
+      totalCost,
+      grossProfit,
+      profitMargin: totalRevenue > 0 ? round2((grossProfit / totalRevenue) * 100) : 0,
+      unitsSold,
+      productsTracked: productMap.size,
+    },
+    rows,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  5. Inventory report                                                       */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -477,7 +604,7 @@ async function buildInventoryReport(limit: number) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  5. Customers report                                                       */
+/*  6. Customers report                                                       */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -564,7 +691,7 @@ async function buildCustomersReport(window: Window, limit: number) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  6. Categories report                                                      */
+/*  7. Categories report                                                      */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -652,6 +779,7 @@ export async function buildReport(query: ReportQueryInput) {
     to: window.to.toISOString(),
     generatedAt: new Date().toISOString(),
     limit: query.limit,
+    allTime: query.allTime,
   };
 
   switch (query.type) {
@@ -661,6 +789,8 @@ export async function buildReport(query: ReportQueryInput) {
       return { meta, orders: await buildOrdersReport(window, query.limit) };
     case "products":
       return { meta, products: await buildProductsReport(window, query.limit) };
+    case "profit":
+      return { meta, profit: await buildProfitReport(window, query.limit) };
     case "inventory":
       return { meta, inventory: await buildInventoryReport(query.limit) };
     case "customers":

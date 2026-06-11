@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import {
   clearReport,
+  setAllTime,
   setFrom,
   setLimit,
   setReportError,
@@ -65,6 +66,13 @@ export default function AdminReportsPage() {
     [dispatch],
   );
 
+  const handleAllTimeChange = useCallback(
+    (value: boolean) => {
+      dispatch(setAllTime(value));
+    },
+    [dispatch],
+  );
+
   const handleGenerate = useCallback(async () => {
     dispatch(setReportLoading(true));
     dispatch(setReportError(null));
@@ -76,6 +84,7 @@ export default function AdminReportsPage() {
         from: reportState.from || undefined,
         to: reportState.to || undefined,
         limit: reportState.limit,
+        allTime: reportState.allTime,
       });
       dispatch(setReportPayload(payload));
     } catch (loadError) {
@@ -88,7 +97,7 @@ export default function AdminReportsPage() {
     } finally {
       dispatch(setReportLoading(false));
     }
-  }, [dispatch, reportState.from, reportState.limit, reportState.to, reportState.type]);
+  }, [dispatch, reportState.from, reportState.limit, reportState.to, reportState.type, reportState.allTime]);
 
   const handleDownload = useCallback(async () => {
     if (!reportState.payload) return;
@@ -142,10 +151,12 @@ export default function AdminReportsPage() {
         from={reportState.from}
         to={reportState.to}
         limit={reportState.limit}
+        allTime={reportState.allTime}
         isLoading={reportState.isLoading}
         onFromChange={(value) => dispatch(setFrom(value))}
         onToChange={(value) => dispatch(setTo(value))}
         onLimitChange={(value) => dispatch(setLimit(value))}
+        onAllTimeChange={handleAllTimeChange}
         onGenerate={() => {
           void handleGenerate();
         }}

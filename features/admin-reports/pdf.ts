@@ -12,6 +12,7 @@ import {
   type InventoryReport,
   type OrdersReport,
   type ProductsReport,
+  type ProfitReport,
   type ReportPayload,
   type SalesReport,
 } from "@/features/admin-reports/api";
@@ -98,7 +99,9 @@ function drawTitleCard(doc: Doc, y: number, payload: ReportPayload): number {
     doc,
     x + 7,
     ty - 1,
-    `Window: ${formatDate(payload.meta.from)} - ${formatDate(payload.meta.to)}`,
+    payload.meta.allTime
+      ? "Window: All time"
+      : `Window: ${formatDate(payload.meta.from)} - ${formatDate(payload.meta.to)}`,
     { bg: C.primarySoft, fg: C.primaryDark },
     "left",
   );
@@ -386,6 +389,48 @@ function renderProducts(doc: Doc, report: ProductsReport, startY: number): void 
   );
 }
 
+function renderProfit(doc: Doc, report: ProfitReport, startY: number): void {
+  let y = drawKpiCards(doc, startY, [
+    { label: "Revenue", value: formatCurrency(report.summary.totalRevenue) },
+    { label: "Cost of goods", value: formatCurrency(report.summary.totalCost) },
+    { label: "Gross profit", value: formatCurrency(report.summary.grossProfit) },
+    { label: "Profit margin", value: `${report.summary.profitMargin}%` },
+    { label: "Units sold", value: formatNumber(report.summary.unitsSold) },
+    { label: "Products tracked", value: formatNumber(report.summary.productsTracked) },
+  ]);
+
+  y = drawSection(doc, y, "Profit by product");
+  drawDataTable(
+    doc,
+    y,
+    [
+      { header: "#", align: "right", width: 12 },
+      { header: "Product", bold: true },
+      { header: "Category", width: 38 },
+      { header: "Units", align: "right", width: 18 },
+      { header: "Revenue", align: "right", width: 32 },
+      { header: "Cost", align: "right", width: 30 },
+      { header: "Profit", align: "right", width: 32, bold: true },
+      { header: "Margin", align: "right", width: 22 },
+      { header: "Stock", align: "right", width: 18 },
+      { header: "Status", width: 26 },
+    ],
+    report.rows.map((row, index) => [
+      String(index + 1),
+      safeText(row.name, "—"),
+      safeText(row.category, "—"),
+      formatNumber(row.unitsSold),
+      formatCurrency(row.revenue),
+      formatCurrency(row.cost),
+      formatCurrency(row.profit),
+      `${row.margin}%`,
+      row.currentStock != null ? formatNumber(row.currentStock) : "—",
+      row.status ? titleCase(row.status) : "—",
+    ]),
+    8.5,
+  );
+}
+
 function renderInventory(doc: Doc, report: InventoryReport, startY: number): void {
   let y = drawKpiCards(doc, startY, [
     { label: "Total products", value: formatNumber(report.summary.totalProducts) },
@@ -492,7 +537,13 @@ function renderCategories(doc: Doc, report: CategoriesReport, startY: number): v
 /* -------------------------------------------------------------------------- */
 
 export async function generateReportPdf(payload: ReportPayload): Promise<jsPDF> {
-  const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  // The profit report carries 10 columns of financial data; portrait A4
+  // squeezes them so the product name wraps one letter per line. Render
+  // it in landscape so every column gets a sane width. All the shared
+  // chrome (header/footer/cards) reads the page width dynamically, so
+  // they adapt automatically.
+  const orientation = payload.meta.type === "profit" ? "landscape" : "portrait";
+  const doc = new jsPDF({ unit: "mm", format: "a4", orientation });
 
   const logo = await loadBrandLogo();
   const def = REPORT_DEFS[payload.meta.type];
@@ -516,6 +567,9 @@ export async function generateReportPdf(payload: ReportPayload): Promise<jsPDF> 
       break;
     case "products":
       if (payload.products) renderProducts(doc, payload.products, y);
+      break;
+    case "profit":
+      if (payload.profit) renderProfit(doc, payload.profit, y);
       break;
     case "inventory":
       if (payload.inventory) renderInventory(doc, payload.inventory, y);

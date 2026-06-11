@@ -7,6 +7,7 @@ type AdminReportsState = {
   from: string;
   to: string;
   limit: number;
+  allTime: boolean;
   payload: ReportPayload | null;
   isLoading: boolean;
   error: string | null;
@@ -30,6 +31,7 @@ const initialState: AdminReportsState = {
   from: range.from,
   to: range.to,
   limit: 100,
+  allTime: false,
   payload: null,
   isLoading: false,
   error: null,
@@ -46,12 +48,17 @@ const slice = createSlice({
     },
     setFrom(state, action: PayloadAction<string>) {
       state.from = action.payload;
+      state.allTime = false;
     },
     setTo(state, action: PayloadAction<string>) {
       state.to = action.payload;
+      state.allTime = false;
     },
     setLimit(state, action: PayloadAction<number>) {
       state.limit = action.payload;
+    },
+    setAllTime(state, action: PayloadAction<boolean>) {
+      state.allTime = action.payload;
     },
     setReportLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
@@ -77,6 +84,7 @@ export const {
   setFrom,
   setTo,
   setLimit,
+  setAllTime,
   setReportLoading,
   setReportError,
   setReportPayload,

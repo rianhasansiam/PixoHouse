@@ -15,6 +15,7 @@ export const REPORT_TYPES = [
   "sales",
   "orders",
   "products",
+  "profit",
   "inventory",
   "customers",
   "categories",
@@ -33,6 +34,7 @@ export type ReportMeta = {
   to: string;
   generatedAt: string;
   limit: number;
+  allTime: boolean;
 };
 
 export type SalesReport = {
@@ -104,6 +106,29 @@ export type ProductsReport = {
   }>;
 };
 
+export type ProfitReport = {
+  summary: {
+    totalRevenue: number;
+    totalCost: number;
+    grossProfit: number;
+    profitMargin: number;
+    unitsSold: number;
+    productsTracked: number;
+  };
+  rows: Array<{
+    productId: string;
+    name: string;
+    category: string;
+    unitsSold: number;
+    revenue: number;
+    cost: number;
+    profit: number;
+    margin: number;
+    currentStock: number | null;
+    status: "ACTIVE" | "INACTIVE" | null;
+  }>;
+};
+
 export type InventoryReport = {
   summary: {
     totalProducts: number;
@@ -167,6 +192,7 @@ export type ReportPayload = {
   sales?: SalesReport;
   orders?: OrdersReport;
   products?: ProductsReport;
+  profit?: ProfitReport;
   inventory?: InventoryReport;
   customers?: CustomersReport;
   categories?: CategoriesReport;
@@ -199,6 +225,12 @@ export const REPORT_DEFS: Record<
       "Best-selling products ranked by revenue and units shipped.",
     subject: "Top Products",
   },
+  profit: {
+    label: "Profit report",
+    description:
+      "Gross profit and margin per product — revenue against buying cost for sold items.",
+    subject: "Profit Report",
+  },
   inventory: {
     label: "Inventory snapshot",
     description:
@@ -223,12 +255,17 @@ export type FetchArgs = {
   from?: string;
   to?: string;
   limit?: number;
+  allTime?: boolean;
 };
 
 export async function fetchReport(args: FetchArgs): Promise<ReportPayload> {
   const params = new URLSearchParams({ type: args.type });
-  if (args.from) params.set("from", args.from);
-  if (args.to) params.set("to", args.to);
+  if (args.allTime) {
+    params.set("allTime", "true");
+  } else {
+    if (args.from) params.set("from", args.from);
+    if (args.to) params.set("to", args.to);
+  }
   if (args.limit) params.set("limit", String(args.limit));
 
   const response = await fetch(`/api/admin/reports?${params.toString()}`, {

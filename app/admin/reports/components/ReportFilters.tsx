@@ -1,15 +1,17 @@
 "use client";
 
-import { CalendarRange, Hash, Loader2, Play } from "lucide-react";
+import { CalendarRange, Hash, Infinity as InfinityIcon, Loader2, Play } from "lucide-react";
 
 type Props = {
   from: string;
   to: string;
   limit: number;
+  allTime: boolean;
   isLoading: boolean;
   onFromChange: (value: string) => void;
   onToChange: (value: string) => void;
   onLimitChange: (value: number) => void;
+  onAllTimeChange: (value: boolean) => void;
   onGenerate: () => void;
   onPresetWindow: (days: number) => void;
 };
@@ -33,8 +35,9 @@ export default function ReportFilters(props: Props) {
           <input
             type="date"
             value={props.from}
+            disabled={props.allTime}
             onChange={(event) => props.onFromChange(event.target.value)}
-            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
+            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           />
         </Field>
 
@@ -42,8 +45,9 @@ export default function ReportFilters(props: Props) {
           <input
             type="date"
             value={props.to}
+            disabled={props.allTime}
             onChange={(event) => props.onToChange(event.target.value)}
-            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500"
+            className="h-10 w-full rounded-xl border border-violet-200 px-3 text-sm outline-none transition focus:border-violet-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           />
         </Field>
 
@@ -67,7 +71,27 @@ export default function ReportFilters(props: Props) {
         </Field>
 
         <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-          <div className="inline-flex rounded-xl border border-violet-100 bg-violet-50/60 p-1 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => props.onAllTimeChange(!props.allTime)}
+            className={
+              "inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all duration-200 " +
+              (props.allTime
+                ? "border-violet-300 bg-linear-to-r from-violet-600 to-indigo-600 text-white shadow-sm"
+                : "border-violet-200 bg-white text-violet-700 hover:bg-violet-50")
+            }
+            aria-pressed={props.allTime}
+          >
+            <InfinityIcon className="h-4 w-4" />
+            All time
+          </button>
+
+          <div
+            className={
+              "inline-flex rounded-xl border border-violet-100 bg-violet-50/60 p-1 text-xs font-bold transition-opacity " +
+              (props.allTime ? "pointer-events-none opacity-40" : "")
+            }
+          >
             {PRESETS.map((preset) => (
               <button
                 key={preset.days}

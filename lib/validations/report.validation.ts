@@ -13,6 +13,7 @@ export const REPORT_TYPES = [
   "sales",
   "orders",
   "products",
+  "profit",
   "inventory",
   "customers",
   "categories",
@@ -47,9 +48,14 @@ export const reportQuerySchema = z
       ),
     // Caps for sub-lists embedded inside aggregated reports.
     limit: z.coerce.number().int().min(1).max(500).default(50),
+    // When "true", ignore from/to and cover the entire data history.
+    allTime: z
+      .enum(["true", "false"])
+      .optional()
+      .transform((value) => value === "true"),
   })
   .superRefine((value, ctx) => {
-    if (value.from && value.to) {
+    if (!value.allTime && value.from && value.to) {
       const from = new Date(value.from).getTime();
       const to = new Date(value.to).getTime();
       if (from > to) {

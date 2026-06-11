@@ -6,6 +6,7 @@ import {
   FolderTree,
   ShoppingBag,
   Sparkles,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -17,6 +18,7 @@ const ICONS: Record<ReportType, LucideIcon> = {
   sales: BarChart3,
   orders: ShoppingBag,
   products: Sparkles,
+  profit: TrendingUp,
   inventory: Boxes,
   customers: Users,
   categories: FolderTree,
@@ -26,6 +28,7 @@ const TYPE_ORDER: ReportType[] = [
   "sales",
   "orders",
   "products",
+  "profit",
   "inventory",
   "customers",
   "categories",

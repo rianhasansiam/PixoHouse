@@ -65,8 +65,8 @@ function formatCount(value: number): string {
 const CARDS: readonly CardConfig[] = [
   {
     id: "revenue",
-    label: "Revenue (this month)",
-    hint: "vs last month",
+    label: "Revenue (all time)",
+    hint: "growth this month",
     accent: "violet",
     icon: "",
     format: formatBdt,
@@ -74,7 +74,7 @@ const CARDS: readonly CardConfig[] = [
   },
   {
     id: "profit",
-    label: "Profit (this month)",
+    label: "Profit (all time)",
     hint: "revenue − cost",
     accent: "emerald",
     icon: TrendingUp,
@@ -83,8 +83,8 @@ const CARDS: readonly CardConfig[] = [
   },
   {
     id: "orders",
-    label: "Orders (this month)",
-    hint: "vs last month",
+    label: "Orders (all time)",
+    hint: "growth this month",
     accent: "indigo",
     icon: ShoppingBag,
     format: formatCount,
@@ -92,8 +92,8 @@ const CARDS: readonly CardConfig[] = [
   },
   {
     id: "customers",
-    label: "Customers",
-    hint: "new sign-ups vs last month",
+    label: "Customers (all time)",
+    hint: "growth this month",
     accent: "emerald",
     icon: Users,
     format: formatCount,
@@ -101,8 +101,8 @@ const CARDS: readonly CardConfig[] = [
   },
   {
     id: "cancellations",
-    label: "Cancellations",
-    hint: "vs last month",
+    label: "Cancellations (all time)",
+    hint: "growth this month",
     accent: "amber",
     icon: Undo2,
     format: formatBdt,
