@@ -168,7 +168,7 @@ export default async function ProductDetailsPage({ params }: Props) {
         description: product.description,
         images:
           product.images.length > 0
-            ? product.images.map((img) => img.url)
+            ? product.images.map((img: ProductWithCategory["images"][number]) => img.url)
             : [FALLBACK_PRODUCT_IMAGE],
         path: `/products/${product.slug}`,
         price: effectivePrice(product),
