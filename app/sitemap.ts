@@ -26,6 +26,9 @@ const STATIC_ROUTES: {
   { path: "/products", changeFrequency: "daily", priority: 0.9 },
   { path: "/about", changeFrequency: "monthly", priority: 0.5 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/privacy-policy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/return-policy", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/terms-and-conditions", changeFrequency: "yearly", priority: 0.3 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
