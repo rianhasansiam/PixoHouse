@@ -10,6 +10,7 @@ import {
   getProductBySlug,
   getProductSlugById,
   listProducts,
+  type ProductWithCategory,
 } from "@/lib/services/product.service";
 import JsonLd from "@/components/seo/JsonLd";
 import { buildMetadata } from "@/lib/seo/metadata";
@@ -121,7 +122,9 @@ export default async function ProductDetailsPage({ params }: Props) {
     getActivePromoBanners(),
   ]);
 
-  const others = relatedRows.filter((row) => row.id !== product.id);
+  const others = relatedRows.filter(
+    (row: ProductWithCategory) => row.id !== product.id,
+  );
 
   const toCard = (row: (typeof others)[number]) => {
     const cardPrice = effectivePrice(row);
