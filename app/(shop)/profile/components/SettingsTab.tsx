@@ -168,13 +168,13 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6"
+      className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6"
     >
       <header className="mb-5 flex items-center gap-3">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700">
           <User className="h-4 w-4" />
         </span>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-base font-bold text-gray-900 sm:text-lg">
             Personal info
           </h2>
@@ -258,12 +258,12 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
             ? `${dirtyKeys.length} pending ${dirtyKeys.length === 1 ? "change" : "changes"}.`
             : "All changes saved."}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:w-auto sm:items-center">
           <button
             type="button"
             onClick={handleReset}
             disabled={!dirty || submitState.status === "saving"}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-white px-4 text-sm font-bold text-violet-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-white px-4 text-sm font-bold text-violet-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:w-auto"
           >
             Reset
           </button>
@@ -272,7 +272,7 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
             disabled={
               !dirty || submitState.status === "saving" || Boolean(blockingError)
             }
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:hover:translate-y-0"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:hover:translate-y-0 sm:w-auto"
           >
             <Save className="h-4 w-4" />
             {submitState.status === "saving" ? "Saving..." : "Save changes"}

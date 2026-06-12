@@ -128,13 +128,13 @@ export default function SecurityTab({ user }: SecurityTabProps) {
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <header className="mb-5 flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700">
             <KeyRound className="h-4 w-4" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 sm:text-lg">
               {hasPassword ? "Change password" : "Set a password"}
             </h2>
@@ -234,7 +234,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:hover:translate-y-0"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-300 disabled:to-gray-300 disabled:hover:translate-y-0 sm:w-auto"
             >
               <KeyRound className="h-4 w-4" />
               {submitState.status === "saving"
@@ -247,12 +247,12 @@ export default function SecurityTab({ user }: SecurityTabProps) {
         </form>
       </section>
 
-      <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6">
+      <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <header className="mb-3 flex items-center gap-3">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700">
             <ShieldCheck className="h-4 w-4" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-900 sm:text-lg">
               Sign-in methods
             </h2>

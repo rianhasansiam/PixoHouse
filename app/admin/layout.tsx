@@ -39,7 +39,7 @@ export default function AdminLayout({
         <main className="min-w-0 flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
           <div className="mx-auto w-full max-w-6xl">
             {/* Mobile top bar — exposes the off-canvas sidebar toggle below lg. */}
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-violet-100 bg-white/85 px-3 py-2.5 shadow-sm backdrop-blur-md lg:hidden">
+            <div className="sticky top-0 z-40 mb-4 flex items-center gap-3 rounded-2xl border border-violet-100 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur-md lg:hidden">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}

@@ -58,9 +58,9 @@ export default function OverviewTab({
   const incompleteProfile = !user.phone || !user.city;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Headline metrics */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2 @xs:grid-cols-2 sm:gap-3 @3xl:grid-cols-4">
         <MetricCard
           icon={<Wallet className="h-4 w-4" />}
           label="Lifetime spend"
@@ -92,8 +92,8 @@ export default function OverviewTab({
       </section>
 
       {incompleteProfile && (
-        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
-          <div className="flex items-start gap-3">
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:rounded-3xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-200 text-amber-900">
               <Sparkles className="h-4 w-4" />
             </span>
@@ -115,7 +115,7 @@ export default function OverviewTab({
             <button
               type="button"
               onClick={() => onJumpToTab("settings")}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-900 px-3 py-1.5 text-xs font-bold text-amber-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-950"
+              className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-amber-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-950 sm:w-auto sm:py-1.5"
             >
               Edit profile
               <ArrowRight className="h-3.5 w-3.5" />
@@ -125,7 +125,7 @@ export default function OverviewTab({
       )}
 
       {/* Order status breakdown */}
-      <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6">
+      <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <header className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-100 text-violet-700">
@@ -145,7 +145,7 @@ export default function OverviewTab({
           </button>
         </header>
 
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 @xs:grid-cols-2 @lg:grid-cols-3 @3xl:grid-cols-5">
           {ordered.map(({ key, count }) => {
             const tone = ORDER_STATUS_TONE[key];
             return (
@@ -154,7 +154,7 @@ export default function OverviewTab({
                 className="rounded-2xl border border-violet-100 bg-white p-3"
               >
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${tone.pill}`}
+                  className={`inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight ${tone.pill}`}
                 >
                   {tone.label}
                 </span>
@@ -178,7 +178,7 @@ export default function OverviewTab({
       </section>
 
       {/* Quick actions */}
-      <section className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6">
+      <section className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <header className="mb-4 flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-100 text-violet-700">
             <Gift className="h-4 w-4" />
@@ -187,7 +187,7 @@ export default function OverviewTab({
             Quick actions
           </h2>
         </header>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md:grid-cols-2 @2xl:grid-cols-3">
           <QuickAction
             label="Browse products"
             description="Discover what's new in store."
@@ -256,7 +256,7 @@ function MetricCard({
   const styles = TONE_STYLES[tone];
   return (
     <div
-      className={`rounded-3xl border border-violet-100 bg-linear-to-br ${styles.surface} p-4 shadow-sm`}
+      className={`min-w-0 rounded-2xl border border-violet-100 bg-linear-to-br ${styles.surface} p-3 shadow-sm sm:rounded-3xl sm:p-4`}
     >
       <div className="flex items-center justify-between gap-2">
         <span
@@ -278,7 +278,9 @@ function MetricCard({
       <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
         {label}
       </p>
-      <p className="mt-0.5 text-2xl font-extrabold text-gray-900">{value}</p>
+      <p className="mt-0.5 wrap-break-word text-xl font-extrabold text-gray-900 sm:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }

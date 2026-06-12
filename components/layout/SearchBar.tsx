@@ -20,6 +20,8 @@ type SearchBarProps = {
   /** Tailwind classes applied to the text input. */
   inputClassName?: string;
   placeholder?: string;
+  /** Focus the input when an enclosing search panel becomes visible. */
+  shouldFocus?: boolean;
   /** Fired after the user navigates (e.g. close the mobile menu sheet). */
   onNavigate?: () => void;
 };
@@ -36,6 +38,7 @@ export default function SearchBar({
   className,
   inputClassName,
   placeholder = "Search products, stores, categories...",
+  shouldFocus = false,
   onNavigate,
 }: SearchBarProps) {
   const router = useRouter();
@@ -52,6 +55,16 @@ export default function SearchBar({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const trimmed = query.trim();
+
+  useEffect(() => {
+    if (!shouldFocus) return;
+
+    const frame = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [shouldFocus]);
 
   // Debounced live search. Each run aborts the previous in-flight request
   // so only the latest keystroke's results land in state. All state writes

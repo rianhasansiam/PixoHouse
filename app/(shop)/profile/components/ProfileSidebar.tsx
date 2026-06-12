@@ -25,9 +25,12 @@ export default function ProfileSidebar({
   stats,
 }: ProfileSidebarProps) {
   return (
-    <aside className="lg:sticky lg:top-[88px] lg:self-start">
+    <aside className="min-w-0 lg:sticky lg:top-[88px] lg:self-start">
       {/* Mobile: horizontal scroller */}
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
+      <nav
+        className="-mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-1 scrollbar-none [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:hidden"
+        aria-label="Profile sections"
+      >
         {PROFILE_TABS.map((tab) => {
           const Icon = tab.icon;
           const active = tab.id === activeTab;
@@ -37,7 +40,7 @@ export default function ProfileSidebar({
               type="button"
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition-all duration-200",
+                "inline-flex shrink-0 snap-start items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all duration-200 sm:gap-2 sm:text-sm",
                 active
                   ? "border-violet-500 bg-violet-50 text-violet-700 shadow-sm"
                   : "border-violet-100 bg-white text-gray-700 hover:border-violet-200 hover:text-violet-700",

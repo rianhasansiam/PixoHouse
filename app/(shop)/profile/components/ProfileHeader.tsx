@@ -36,8 +36,8 @@ function formatBdt(value: number): string {
  */
 export default function ProfileHeader({ user, stats }: ProfileHeaderProps) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-violet-100 bg-white shadow-sm">
-      <div className="relative bg-linear-to-br from-violet-600 via-indigo-600 to-fuchsia-600 px-6 py-7 text-white sm:px-10">
+    <section className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm sm:rounded-3xl">
+      <div className="relative bg-linear-to-br from-violet-600 via-indigo-600 to-fuchsia-600 px-4 py-5 text-white sm:px-6 sm:py-7 lg:px-10">
         <div
           className="pointer-events-none absolute inset-0 opacity-10"
           style={{
@@ -46,32 +46,36 @@ export default function ProfileHeader({ user, stats }: ProfileHeaderProps) {
             backgroundSize: "22px 22px",
           }}
         />
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
             <Avatar user={user} />
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wider text-white/80">
                 {user.role === "ADMIN" ? "Administrator" : "Member"}
               </p>
-              <h1 className="mt-0.5 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="mt-0.5 wrap-break-word text-xl font-extrabold tracking-tight sm:truncate sm:text-3xl">
                 {user.name || "Welcome back"}
               </h1>
-              <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-white/85">
-                <Mail className="h-3.5 w-3.5" />
-                {user.email}
+              <p className="mt-1 flex min-w-0 items-start gap-1.5 text-xs text-white/85 sm:items-center sm:text-sm">
+                <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 sm:mt-0" />
+                <span className="break-all sm:truncate">{user.email}</span>
               </p>
             </div>
           </div>
 
-          <div className="grid w-full max-w-md grid-cols-3 gap-2 sm:max-w-sm sm:gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:max-w-sm">
             <Stat label="Orders" value={stats.totalOrders.toString()} />
-            <Stat label="Lifetime spend" value={formatBdt(stats.totalSpend)} />
             <Stat label="Wishlist" value={stats.wishlistCount.toString()} />
+            <Stat
+              label="Lifetime spend"
+              value={formatBdt(stats.totalSpend)}
+              className="col-span-2 sm:col-span-1"
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-3 border-t border-violet-100 p-5 sm:grid-cols-4 sm:p-6">
+      <div className="grid grid-cols-1 gap-2 border-t border-violet-100 p-3 sm:grid-cols-2 sm:gap-3 sm:p-6 lg:grid-cols-4">
         <InfoTile
           icon={<User className="h-4 w-4" />}
           label="Display name"
@@ -108,7 +112,7 @@ export default function ProfileHeader({ user, stats }: ProfileHeaderProps) {
 
 function Avatar({ user }: { user: ProfileUser }) {
   return (
-    <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-white/40 bg-white/15 text-white shadow-md backdrop-blur-md">
+    <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-white/40 bg-white/15 text-white shadow-md backdrop-blur-md sm:h-16 sm:w-16">
       {user.image ? (
         <Image
           src={user.image}
@@ -126,13 +130,23 @@ function Avatar({ user }: { user: ProfileUser }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-center backdrop-blur-md">
+    <div
+      className={`min-w-0 rounded-2xl border border-white/30 bg-white/15 px-3 py-2 text-center backdrop-blur-md ${className}`}
+    >
       <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">
         {label}
       </p>
-      <p className="mt-0.5 truncate text-sm font-extrabold sm:text-base">
+      <p className="mt-0.5 wrap-break-word text-sm font-extrabold sm:truncate sm:text-base">
         {value}
       </p>
     </div>
@@ -149,14 +163,16 @@ function InfoTile({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-violet-100 bg-white p-3">
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-violet-50 text-violet-700">
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-violet-100 bg-white p-2.5 sm:block sm:rounded-2xl sm:p-3">
+      <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:gap-2 sm:text-[11px] sm:tracking-wider">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-violet-50 text-violet-700">
           {icon}
         </span>
-        {label}
+        <span className="min-w-0 truncate">{label}</span>
       </div>
-      <p className="mt-1.5 truncate text-sm font-bold text-gray-900">{value}</p>
+      <p className="min-w-0 flex-1 truncate text-right text-xs font-bold text-gray-900 sm:mt-1.5 sm:flex-none sm:text-left sm:wrap-break-word sm:text-sm">
+        {value}
+      </p>
     </div>
   );
 }

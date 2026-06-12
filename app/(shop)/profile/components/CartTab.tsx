@@ -202,14 +202,14 @@ export default function CartTab() {
   const hiddenCount = Math.max(0, items.length - PROFILE_PREVIEW_LIMIT);
 
   return (
-    <div className="flex flex-col gap-5">
-      <header className="rounded-3xl border border-violet-100 bg-white p-5 shadow-sm sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <header className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700">
               <ShoppingBag className="h-4 w-4" />
             </span>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base font-bold text-gray-900 sm:text-lg">
                 Cart
               </h2>
@@ -222,7 +222,7 @@ export default function CartTab() {
           </div>
           <Link
             href="/cart"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-violet-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-violet-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50 sm:w-auto"
           >
             Open cart
             <ArrowRight className="h-3.5 w-3.5" />
@@ -237,11 +237,11 @@ export default function CartTab() {
       )}
 
       {isLoading && items.length === 0 ? (
-        <div className="rounded-3xl border border-violet-100 bg-white p-10 text-center text-sm text-violet-700 shadow-sm">
+        <div className="rounded-2xl border border-violet-100 bg-white p-6 text-center text-sm text-violet-700 shadow-sm sm:rounded-3xl sm:p-10">
           Loading cart...
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-3xl border border-violet-100 bg-white p-10 text-center shadow-sm">
+        <div className="rounded-2xl border border-violet-100 bg-white p-6 text-center shadow-sm sm:rounded-3xl sm:p-10">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-violet-100 text-violet-700">
             <ShoppingBag className="h-6 w-6" />
           </div>
@@ -272,9 +272,9 @@ export default function CartTab() {
                   exit="exit"
                   variants={LIST_ITEM_VARIANTS}
                   transition={LIST_ITEM_TRANSITION}
-                  className="flex items-center gap-3 overflow-hidden rounded-2xl border border-violet-100 bg-white p-3 shadow-sm sm:p-4"
+                  className="grid grid-cols-[56px_minmax(0,1fr)] items-start gap-3 overflow-hidden rounded-2xl border border-violet-100 bg-white p-3 shadow-sm sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:items-center sm:p-4"
                 >
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-violet-100 bg-violet-50 sm:h-16 sm:w-16">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.image || FALLBACK_PRODUCT_IMAGE}
@@ -304,7 +304,7 @@ export default function CartTab() {
                       </span>
                     )}
                   </p>
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center rounded-xl border border-violet-100 bg-white">
                       <button
                         type="button"
@@ -342,7 +342,7 @@ export default function CartTab() {
                     </button>
                   </div>
                 </div>
-                <p className="shrink-0 text-sm font-extrabold text-gray-900">
+                <p className="col-start-2 shrink-0 text-left text-sm font-extrabold text-gray-900 sm:col-start-3 sm:row-start-1 sm:text-right">
                   {formatBdt(item.lineTotal)}
                 </p>
                 </motion.li>
@@ -360,8 +360,8 @@ export default function CartTab() {
             </Link>
           )}
 
-          <section className="rounded-3xl border border-violet-100 bg-linear-to-br from-violet-50 via-white to-fuchsia-50 p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
+          <section className="rounded-2xl border border-violet-100 bg-linear-to-br from-violet-50 via-white to-fuchsia-50 p-4 shadow-sm sm:rounded-3xl sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Subtotal
@@ -372,7 +372,7 @@ export default function CartTab() {
               </div>
               <Link
                 href="/checkout"
-                className="inline-flex h-11 items-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto"
               >
                 <Lock className="h-4 w-4" />
                 Checkout
