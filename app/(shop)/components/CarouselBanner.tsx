@@ -90,37 +90,37 @@ export default function CaroselBanner({ slides }: { slides: CarouselSlide[] }) {
           <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between px-6 sm:px-10 py-8 sm:py-12">
+        <div className="relative z-10 flex h-[40vh] flex-row items-center justify-between gap-3 px-4 py-4 sm:gap-6 sm:px-8 sm:py-6 md:h-auto md:px-10 md:py-12">
           {/* Text Content */}
           <div
             key={activeDeal.id}
-            className="text-white text-center md:text-left mb-6 md:mb-0 max-w-lg animate-in fade-in slide-in-from-left-5 duration-700"
+            className="min-w-0 flex-1 max-w-lg text-left text-white animate-in fade-in slide-in-from-left-5 duration-700"
           >
-            <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium mb-3">
+            <span className="mb-2 inline-block rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm sm:px-3 sm:py-1 sm:text-xs md:mb-3">
               🎉 {activeDeal.badge}
             </span>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight mb-3">
+            <h1 className="mb-2 text-xl font-black leading-tight sm:text-3xl md:mb-3 md:text-4xl lg:text-5xl">
               {activeDeal.title}
               <br />
               <span className="text-yellow-300">{activeDeal.subtitle}</span>
             </h1>
 
-            <p className="text-sm sm:text-base text-white/80 mb-5 max-w-md">
+            <p className="mb-3 line-clamp-2 max-w-md text-[11px] leading-snug text-white/80 sm:line-clamp-3 sm:text-sm md:mb-5 md:line-clamp-none md:text-base">
               {activeDeal.description}
             </p>
 
-            <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            <div className="flex flex-wrap justify-start gap-2 md:gap-3">
               <Link
                 href={activeDeal.link ?? "/products"}
-                className="px-6 py-2.5 bg-white text-violet-700 font-bold text-sm rounded-full hover:bg-yellow-300 hover:text-violet-900 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-violet-700 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-yellow-300 hover:text-violet-900 hover:shadow-xl sm:px-4 sm:py-2 sm:text-xs md:px-6 md:py-2.5 md:text-sm"
               >
                 Shop Now
               </Link>
 
               <Link
                 href="/products"
-                className="px-6 py-2.5 border-2 border-white/50 text-white font-semibold text-sm rounded-full hover:bg-white/10 transition-all duration-300"
+                className="rounded-full border border-white/50 px-3 py-1.5 text-[11px] font-semibold text-white transition-all duration-300 hover:bg-white/10 sm:px-4 sm:py-2 sm:text-xs md:border-2 md:px-6 md:py-2.5 md:text-sm"
               >
                 View Offers
               </Link>
@@ -130,18 +130,18 @@ export default function CaroselBanner({ slides }: { slides: CarouselSlide[] }) {
           {/* Hero Image */}
           <div
             key={`${activeDeal.id}-image`}
-            className="relative w-48 h-48 sm:w-64 sm:h-64 lg:w-72 lg:h-72 shrink-0 animate-in fade-in zoom-in-95 duration-700"
+            className="relative size-24 shrink-0 animate-in fade-in zoom-in-95 duration-700 sm:size-36 md:size-64 lg:size-72"
           >
             <Image
               src={activeDeal.image}
               alt={activeDeal.subtitle}
               fill
-              className="object-cover rounded-full border-4 border-white/30 shadow-2xl"
-              sizes="(max-width: 640px) 192px, (max-width: 1024px) 256px, 288px"
+              className="rounded-full border-2 border-white/30 object-cover shadow-2xl md:border-4"
+              sizes="(max-width: 640px) 96px, (max-width: 768px) 144px, (max-width: 1024px) 256px, 288px"
               priority
             />
 
-            <div className="absolute -top-2 -right-2 bg-yellow-400 text-violet-900 font-black text-sm px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+            <div className="absolute -right-1 -top-1 animate-bounce rounded-full bg-yellow-400 px-2 py-1 text-[9px] font-black text-violet-900 shadow-lg sm:text-[10px] md:-right-2 md:-top-2 md:px-3 md:py-1.5 md:text-sm">
               {activeDeal.title}
             </div>
           </div>

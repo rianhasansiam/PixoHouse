@@ -11,7 +11,7 @@ const team = [
       "/images/RianDP.png",
   },
   {
-    name: "Moniruzzaman Raju",
+    name: "Md Moniruzzaman",
     role: "CEO",
     image:
       "/images/raju.jpg",
