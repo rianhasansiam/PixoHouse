@@ -31,6 +31,11 @@ const STATIC_ROUTES: {
   { path: "/terms-and-conditions", changeFrequency: "yearly", priority: 0.3 },
 ];
 
+type SitemapDbRow = {
+  slug: string;
+  updatedAt: Date;
+};
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -45,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let productEntries: MetadataRoute.Sitemap = [];
 
   try {
-    const categories = await prisma.category.findMany({
+    const categories: SitemapDbRow[] = await prisma.category.findMany({
       where: { status: "ACTIVE" },
       select: { slug: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
@@ -63,7 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   try {
-    const products = await prisma.product.findMany({
+    const products: SitemapDbRow[] = await prisma.product.findMany({
       where: { status: "ACTIVE" },
       select: { slug: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
