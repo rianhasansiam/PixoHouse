@@ -1,7 +1,8 @@
 
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 import { prisma } from "@/lib/db/prisma";
 import type {
@@ -353,7 +354,7 @@ export async function createProduct(input: CreateProductInput) {
       });
     } catch (error) {
       const isCodeCollision =
-        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error instanceof PrismaClientKnownRequestError &&
         error.code === "P2002" &&
         (error.meta?.target as string[] | undefined)?.includes("productCode");
       if (isCodeCollision && attempt < MAX_ATTEMPTS - 1) continue;

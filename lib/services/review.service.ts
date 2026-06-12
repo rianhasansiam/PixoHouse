@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { ServiceError } from "@/lib/services/service-error";
@@ -335,7 +336,7 @@ export async function deleteReview(id: string): Promise<{ id: string }> {
     return { id };
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       throw new ServiceError(404, "Review not found.");

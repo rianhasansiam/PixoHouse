@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -610,7 +611,7 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
     });
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
       throw new CheckoutError(

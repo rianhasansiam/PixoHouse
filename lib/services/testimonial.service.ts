@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/db/prisma";
@@ -220,7 +221,7 @@ export async function updateTestimonial(
     return serializeTestimonial(row);
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       throw new ServiceError(404, "Testimonial not found.");
@@ -235,7 +236,7 @@ export async function deleteTestimonial(id: string): Promise<{ id: string }> {
     return { id };
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       throw new ServiceError(404, "Testimonial not found.");

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // P2002 = unique constraint violation. Race-safe duplicate handling.
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
       return jsonError(

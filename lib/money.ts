@@ -1,4 +1,5 @@
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/client";
 
 /**
  * Decimal-safe money helpers.
@@ -19,8 +20,6 @@ import { Prisma } from "@prisma/client";
  */
 
 export type DecimalInput = Prisma.Decimal | number | string | null | undefined;
-
-const Decimal = Prisma.Decimal;
 
 /** Coerce any money-ish value into an exact Decimal (null/undefined -> 0). */
 export function toDecimal(value: DecimalInput): Prisma.Decimal {

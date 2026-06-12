@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     revalidateTag("home-categories", "max");
     return ok(category);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
         return jsonError(404, "Category not found.");
       }
@@ -98,7 +98,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return ok(result.category);
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       return jsonError(404, "Category not found.");

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/db/prisma";
@@ -175,7 +176,7 @@ export async function deleteMessage(messageId: string) {
     await prisma.contactMessage.delete({ where: { id: messageId } });
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       throw new ContactError(404, "Message not found.");

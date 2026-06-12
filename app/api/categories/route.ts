@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     // because the service generates a unique slug, but a concurrent
     // create with the same name could still race us — return 409.
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
       return jsonError(409, "A category with that name already exists.");

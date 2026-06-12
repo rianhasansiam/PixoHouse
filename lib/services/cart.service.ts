@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { multiply, round2, subtractClamped, sumDecimals, toDecimal } from "@/lib/money";

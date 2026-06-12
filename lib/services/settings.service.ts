@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/lib/db/prisma";
@@ -296,7 +297,7 @@ export async function createPromoCode(input: CreatePromoCodeInput) {
     return serializePromo(row);
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
       throw new SettingsError(409, "A promo code with that name already exists.");
@@ -339,7 +340,7 @@ export async function updatePromoCode(
     });
     return serializePromo(row);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof PrismaClientKnownRequestError) {
       if (error.code === "P2025") {
         throw new SettingsError(404, "Promo code not found.");
       }
@@ -363,7 +364,7 @@ export async function deletePromoCode(id: string) {
     return serializePromo(row);
   } catch (error) {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
       throw new SettingsError(404, "Promo code not found.");
