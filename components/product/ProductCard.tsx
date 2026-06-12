@@ -272,10 +272,10 @@ export default function ProductCard({
           }}
           disabled={isCartBusy}
           aria-label="Add to cart"
-          className="absolute bottom-2 left-1/2 flex -translate-x-1/2 translate-y-2 items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-violet-700 opacity-0 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-violet-600 hover:text-white group-hover:translate-y-0 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="absolute right-2 top-11 flex items-center gap-1.5 rounded-full bg-white/95 p-1.5 text-xs font-semibold text-violet-700 opacity-100 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-violet-600 hover:text-white sm:bottom-2 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 sm:px-3 sm:py-1.5 sm:can-hover:translate-y-2 sm:can-hover:opacity-0 sm:can-hover:group-hover:translate-y-0 sm:can-hover:group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ShoppingCart className="h-3.5 w-3.5" />
-          Add
+          <span className="hidden sm:inline">Add</span>
         </button>
       </div>
 
