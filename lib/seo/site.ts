@@ -1,5 +1,5 @@
 /**
- * Central SEO/site configuration for EnterFly.
+ * Central SEO/site configuration for PixoHouse.
  *
  * Everything that the metadata helpers, JSON-LD builders, robots, and
  * sitemap need lives here so there is a single source of truth. The
@@ -15,17 +15,17 @@ const normalizedUrl = siteUrl.replace(/\/+$/, "");
 
 export const siteConfig = {
   /** Brand / website name. */
-  name: "EnterFly",
+  name: "PixoHouse",
   /** Short name for PWA-style metadata (application name). */
-  shortName: "EnterFly",
-  /** Absolute production origin, e.g. https://enterfly.com (no trailing slash). */
+  shortName: "PixoHouse",
+  /** Absolute production origin, e.g. https://pixohouse.tech (no trailing slash). */
   url: normalizedUrl,
   /** Default, e-commerce-focused site description. */
   description:
-    "EnterFly is your trusted online shopping destination. Discover quality electronics, fashion, and home essentials with secure checkout, fast delivery, and great prices in BDT.",
+    "PixoHouse is your trusted online shopping destination. Discover quality electronics, fashion, and home essentials with secure checkout, fast delivery, and great prices in BDT.",
   /** Default keyword set used as a baseline across the storefront. */
   keywords: [
-    "EnterFly",
+    "PixoHouse",
     "online shopping",
     "ecommerce",
     "buy online",
@@ -40,9 +40,23 @@ export const siteConfig = {
   locale: "en_US",
   /** Store currency (ISO 4217) — used in Product offers JSON-LD. */
   currency: "BDT",
-  author: "EnterFly",
-  creator: "EnterFly",
-  publisher: "EnterFly",
+  author: "PixoHouse",
+  creator: "PixoHouse",
+  publisher: "PixoHouse",
+  /**
+   * Business contact details — single source of truth for the contact
+   * page, policy callouts, footer, and PDF documents.
+   */
+  contact: {
+    /** Public support email. */
+    email: "pixohouse@gmail.com",
+    /** Local Bangladeshi mobile number (display + tel: form). */
+    phone: "01932600504",
+    /** International (E.164) form for `tel:` links. */
+    phoneIntl: "+8801932600504",
+    /** Physical / HQ address. */
+    address: "Mirpur, Dhaka, Bangladesh",
+  },
   /**
    * Default / fallback Open Graph image (absolute URL). Used on the home
    * page and any page whose own image is missing. The brand logo is the

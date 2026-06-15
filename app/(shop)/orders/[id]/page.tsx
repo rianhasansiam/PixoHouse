@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 
 import OrderSummaryClient from "./components/OrderSummaryClient";
+import { siteConfig } from "@/lib/seo/site";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
 export const metadata: Metadata = {
-  title: "Order summary | EnterFly",
+  title: `Order summary | ${siteConfig.name}`,
   description: "Review your order and download the receipt.",
   robots: { index: false, follow: false },
 };

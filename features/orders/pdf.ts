@@ -393,5 +393,5 @@ export async function generateOrderPdf(order: OrderDetail): Promise<jsPDF> {
 /** Save the PDF with a sensible default filename. */
 export async function downloadOrderPdf(order: OrderDetail): Promise<void> {
   const doc = await generateOrderPdf(order);
-  doc.save(`EnterFly-${order.orderNumber}.pdf`);
+  doc.save(`${STORE_INFO.name}-${order.orderNumber}.pdf`);
 }

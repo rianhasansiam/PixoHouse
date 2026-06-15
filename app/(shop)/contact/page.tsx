@@ -13,7 +13,7 @@ export const metadata: Metadata = buildMetadata({
   title: "Contact Us",
   description: `Get in touch with ${siteConfig.name}. Questions about orders, products, or support? Reach our team and we'll help you out.`,
   path: "/contact",
-  keywords: ["contact EnterFly", "customer support", "help", siteConfig.name],
+  keywords: [`contact ${siteConfig.name}`, "customer support", "help", siteConfig.name],
 });
 
 export default function ContactPage() {

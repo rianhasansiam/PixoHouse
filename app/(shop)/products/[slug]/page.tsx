@@ -162,7 +162,7 @@ export default async function ProductDetailsPage({ params }: Props) {
   // Structured data: only emit for publicly visible (ACTIVE) products so
   // crawlers never see schema for hidden/soft-deleted items. SKU comes
   // from the primary variant when present; brand/ratings are omitted
-  // because EnterFly has no real data for them yet.
+  // because PixoHouse has no real data for them yet.
   const isPublic = product.status === "ACTIVE";
   const primarySku = product.variants[0]?.sku ?? null;
   const productSchema = isPublic

@@ -54,7 +54,7 @@ export default function OurStory() {
           </h2>
 
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            EnterFly was born from a simple idea: local shopping should feel as easy as ordering online,
+            PixoHouse was born from a simple idea: local shopping should feel as easy as ordering online,
             without losing the trust and quality of your favorite neighborhood stores. We started in 2024
             with a small team passionate about empowering local businesses with modern technology.
           </p>

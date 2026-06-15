@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "@/lib/feedback";
+import { siteConfig } from "@/lib/seo/site";
 
 const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ?? "";
 const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ?? "";
@@ -23,7 +24,7 @@ const subjects = [
   "General Inquiry",
   "Order Support",
   "Returns & Refunds",
-  "Partnership / Sell on EnterFly",
+  `Partnership / Sell on ${siteConfig.name}`,
   "Bug Report",
   "Other",
 ];
@@ -169,10 +170,10 @@ export default function ContactForm() {
                 Prefer email?
               </p>
               <a
-                href="mailto:support@enterfly.com"
+                href={`mailto:${siteConfig.contact.email}`}
                 className="mt-1 block text-base font-black text-brand-gold hover:underline"
               >
-                support@enterfly.com
+                {siteConfig.contact.email}
               </a>
             </div>
           </div>

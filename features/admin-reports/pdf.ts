@@ -30,6 +30,7 @@ import {
   paintBackground,
   PDF_COLORS as C,
   safeText,
+  STORE_INFO,
   titleCase,
   type Doc,
 } from "@/features/branding/pdf";
@@ -582,13 +583,13 @@ export async function generateReportPdf(payload: ReportPayload): Promise<jsPDF> 
       break;
   }
 
-  drawBrandFooter(doc, ["EnterFly Admin · Confidential"]);
+  drawBrandFooter(doc, [`${STORE_INFO.name} Admin · Confidential`]);
   return doc;
 }
 
 export function buildReportFilename(payload: ReportPayload): string {
   const stamp = payload.meta.generatedAt.replace(/[:.]/g, "-").slice(0, 19);
-  return `enterfly-${payload.meta.type}-report-${stamp}.pdf`;
+  return `${STORE_INFO.name.toLowerCase()}-${payload.meta.type}-report-${stamp}.pdf`;
 }
 
 export async function downloadReportPdf(payload: ReportPayload): Promise<void> {

@@ -2,21 +2,23 @@
 
 import { Mail, Phone, MapPin, Clock } from "lucide-react";
 
+import { siteConfig } from "@/lib/seo/site";
+
 const cards = [
   {
     icon: Mail,
     title: "Email Us",
-    value: "help.enterfly@gmail.com",
+    value: siteConfig.contact.email,
     helper: "We reply within 2 hours",
-    href: "mailto:help.enterfly@gmail.com",
+    href: `mailto:${siteConfig.contact.email}`,
     color: "bg-brand-red",
   },
   {
     icon: Phone,
     title: "Call Us",
-    value: "01307026260",
+    value: siteConfig.contact.phone,
     helper: "Mon - Sun, 9am to 9pm",
-    href: "tel:01307026260",
+    href: `tel:${siteConfig.contact.phone}`,
     color: "bg-brand-red",
   },
   {

@@ -17,7 +17,7 @@ export const metadata: Metadata = buildMetadata({
   title: "About Us",
   description: `Learn about ${siteConfig.name} — our story, values, and the team behind your trusted online shopping destination for quality products at great prices.`,
   path: "/about",
-  keywords: ["about EnterFly", "our story", "company", siteConfig.name],
+  keywords: [`about ${siteConfig.name}`, "our story", "company", siteConfig.name],
 });
 
 export default async function AboutPage() {

@@ -1,7 +1,9 @@
 import { jsPDF } from "jspdf";
 
+import { siteConfig } from "@/lib/seo/site";
+
 /**
- * Shared branding primitives for every EnterFly-generated PDF
+ * Shared branding primitives for every PixoHouse-generated PDF
  * (order receipts, admin reports, …).
  *
  * Centralising the palette, logo loader, header, and footer keeps the
@@ -43,10 +45,10 @@ export const FOOTER_HEIGHT = 16;
 export const LINE_HEIGHT = 4.8;
 
 export const STORE_INFO = {
-  name: "EnterFly",
+  name: siteConfig.name,
   tagline: "Local Marketplace",
-  address: "Mirpur, Dhaka, Bangladesh",
-  email: "help.enterfly@gmail.com",
+  address: siteConfig.contact.address,
+  email: siteConfig.contact.email,
 };
 
 /** Public path to the brand logo (served from `public/logo/logo.png`). */

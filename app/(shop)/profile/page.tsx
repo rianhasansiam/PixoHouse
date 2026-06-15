@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import ProfileClient from "./components/ProfileClient";
+import { siteConfig } from "@/lib/seo/site";
 
 export const metadata: Metadata = {
-  title: "My Profile | EnterFly",
-  description:
-    "Manage your account, view orders, wishlist, and cart history on EnterFly.",
+  title: `My Profile | ${siteConfig.name}`,
+  description: `Manage your account, view orders, wishlist, and cart history on ${siteConfig.name}.`,
   robots: { index: false, follow: false },
 };
 

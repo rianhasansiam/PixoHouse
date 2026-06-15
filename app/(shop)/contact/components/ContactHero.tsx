@@ -2,6 +2,8 @@
 
 import { Sparkles, MessageCircle, Headphones } from "lucide-react";
 
+import { siteConfig } from "@/lib/seo/site";
+
 export default function ContactHero() {
   return (
     <section className="relative overflow-hidden rounded-3xl bg-brand-black px-6 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-white shadow-xl">
@@ -40,7 +42,7 @@ export default function ContactHero() {
               Send Message
             </a>
             <a
-              href="tel:01307026260"
+              href={`tel:${siteConfig.contact.phone}`}
               className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/20"
             >
               <Headphones className="h-4 w-4" />
@@ -57,7 +59,7 @@ export default function ContactHero() {
                 <MessageCircle className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-bold">EnterFly Support</p>
+                <p className="text-sm font-bold">{siteConfig.name} Support</p>
                 <p className="text-xs text-white/80">Avg. reply in under 2 hours</p>
               </div>
             </div>

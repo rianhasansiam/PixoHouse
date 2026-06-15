@@ -16,7 +16,7 @@ export default function AboutHero() {
           <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 backdrop-blur-sm ring-1 ring-white/20">
             <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
             <span className="text-[11px] font-bold tracking-wide uppercase">
-              About EnterFly
+              About PixoHouse
             </span>
           </div>
 
@@ -28,7 +28,7 @@ export default function AboutHero() {
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/90 sm:text-base">
-            EnterFly connects you with verified local stores within 50km, bringing real-time deals,
+            PixoHouse connects you with verified local stores within 50km, bringing real-time deals,
             handpicked products, and a seamless shopping experience to your doorstep.
           </p>
 
@@ -57,7 +57,7 @@ export default function AboutHero() {
                 <MapPin className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-bold">EnterFly Marketplace</p>
+                <p className="text-sm font-bold">PixoHouse Marketplace</p>
                 <p className="text-xs text-white/80">Trusted by 50,000+ shoppers</p>
               </div>
             </div>

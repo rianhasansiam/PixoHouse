@@ -4,6 +4,8 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { siteConfig } from "@/lib/seo/site";
+
 const quickLinks = [
   { name: "Home", href: "/" },
   { name: "Shop Categories", href: "/products" },
@@ -78,7 +80,7 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="col-span-2 sm:col-span-2 md:col-span-1 space-y-3 sm:space-y-4">
             <div className="flex items-center gap-2">
-              <Image src="/logo/logo.png" alt="EnterFly Logo" width={120} height={100} />
+              <Image src="/logo/logo.png" alt={`${siteConfig.name} Logo`} width={120} height={100} />
             </div>
             <p className="text-brand-white text-xs sm:text-sm leading-relaxed">
               Discover premium verified stores within 50km. Real-time deals, clean UI, and a
@@ -125,7 +127,7 @@ const Footer = () => {
             {/* Keep In Touch */}
             <h5 className="text-sm sm:text-base font-black text-brand-white mb-2 sm:mb-3">Keep In Touch</h5>
             <p className="mb-3 max-w-xs text-xs leading-relaxed text-brand-white sm:mb-4 sm:text-sm">
-              Follow EnterFly for fresh deals and local shopping updates.
+              Follow {siteConfig.name} for fresh deals and local shopping updates.
             </p>
             <div className="flex flex-wrap gap-2.5 sm:gap-3">
               {socialLinks.map((social) => (

@@ -2,11 +2,13 @@
 
 import { MapPin, Navigation, Building2 } from "lucide-react";
 
+import { siteConfig } from "@/lib/seo/site";
+
 const offices = [
   {
     city: "Dhaka (HQ)",
-    address: "Mirpur, Dhaka, Bangladesh",
-    phone: "01307026260",
+    address: siteConfig.contact.address,
+    phone: siteConfig.contact.phone,
   },
 ];
 
@@ -35,7 +37,7 @@ export default function ContactMap() {
         <div className="lg:col-span-3">
           <div className="relative h-72 overflow-hidden rounded-3xl shadow-lg ring-1 ring-brand-border sm:h-80 lg:h-full lg:min-h-[420px]">
             <iframe
-              title="EnterFly HQ"
+              title={`${siteConfig.name} HQ`}
               src="https://www.google.com/maps?q=Mirpur+Dhaka&output=embed"
               className="h-full w-full border-0"
               loading="lazy"
@@ -45,7 +47,7 @@ export default function ContactMap() {
             {/* Overlay badge */}
             <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 shadow-md ring-1 ring-brand-border backdrop-blur-sm">
               <MapPin className="h-3.5 w-3.5 text-brand-red" />
-              <span className="text-xs font-bold text-foreground">EnterFly HQ</span>
+              <span className="text-xs font-bold text-foreground">{siteConfig.name} HQ</span>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { Home, LogOut, ShieldCheck, X } from "lucide-react";
 import { ADMIN_NAV } from "./data";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/lib/seo/site";
 
 type Props = {
   open: boolean;
@@ -41,7 +42,7 @@ export default function AdminSidebar({ open, onClose }: Props) {
             </div>
             <div className="leading-tight">
               <p className="text-sm font-bold text-white">Admin Panel</p>
-              <p className="text-[11px] font-medium text-white/70">EnterFly Console</p>
+              <p className="text-[11px] font-medium text-white/70">{siteConfig.name} Console</p>
             </div>
           </div>
           <button

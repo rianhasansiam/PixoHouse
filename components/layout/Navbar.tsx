@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import SearchBar from "@/components/layout/SearchBar";
 import { confirm } from "@/lib/feedback";
+import { siteConfig } from "@/lib/seo/site";
 import type { RootState } from "@/store";
 
 type MenuItem = {
@@ -225,7 +226,7 @@ export default function Navbar() {
             <div className="flex select-none flex-col leading-tight">
               <Image
                 src="/logo/logo.png"
-                alt="EnterFly Logo"
+                alt={`${siteConfig.name} Logo`}
                 width={80}
                 height={80}
               />

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { noIndexMetadata } from "@/lib/seo/metadata";
+import { siteConfig } from "@/lib/seo/site";
 
 /**
  * Checkout is an authenticated, transactional client page. This server
@@ -9,7 +10,7 @@ import { noIndexMetadata } from "@/lib/seo/metadata";
  */
 export const metadata: Metadata = noIndexMetadata(
   "Checkout",
-  "Complete your EnterFly order securely.",
+  `Complete your ${siteConfig.name} order securely.`,
 );
 
 export default function CheckoutLayout({

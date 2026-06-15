@@ -62,7 +62,7 @@ export function normalizeSavedItem(raw: unknown): SavedItem | null {
     size: typeof entry.size === "string" ? entry.size : null,
     name,
     brand:
-      typeof entry.brand === "string" && entry.brand ? entry.brand : "EnterFly",
+      typeof entry.brand === "string" && entry.brand ? entry.brand : "PixoHouse",
     image: image || FALLBACK_PRODUCT_IMAGE,
     price,
     originalPrice,
