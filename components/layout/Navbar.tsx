@@ -201,7 +201,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-brand-light-bg px-1 py-2 sm:px-4 lg:border-b lg:border-brand-border lg:px-0 lg:py-0">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 rounded-md border border-brand-border bg-brand-white py-2.5 shadow-sm sm:px-4 lg:rounded-none lg:border-none lg:bg-transparent lg:py-3 lg:shadow-none lg:px-6">
-        {/* LEFT: Mobile Menu + Logo */}
+        {/* LEFT: Mobile Menu + Brand */}
         <div className="flex items-center gap-2">
           <button
             ref={mobileMenuButtonRef}
@@ -220,19 +220,33 @@ export default function Navbar() {
 
           <Link
             href="/"
-            className="group flex shrink-0 items-center gap-2 transition-transform duration-300 hover:scale-[1.02]"
+            aria-label={`${siteConfig.name} home`}
+            className="group flex shrink-0 items-center rounded-xl px-1 py-1.5 transition-transform duration-300 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
           >
-           
-            <div className="flex select-none flex-col leading-tight">
+            {/* Logo retained for future use.
+            <div className="w-[4.35rem] overflow-hidden rounded-lg bg-brand-black shadow-sm ring-1 ring-brand-black/10 transition-shadow duration-300 group-hover:shadow-md sm:w-[4.9rem]">
               <Image
-                src="/logo/logo.png"
-                alt={`${siteConfig.name} Logo`}
-                width={80}
-                height={80}
+                src="/logo/NavbarLogo1.png"
+                alt=""
+                width={2653}
+                height={1240}
+                sizes="(min-width: 640px) 70px, 68px"
+                loading="eager"
+                className=" h-auto w-full"
               />
-              {/* <p className="-mt-0.5 hidden whitespace-nowrap text-[9px] font-medium tracking-wide text-gray-800 sm:block sm:text-xs">
-                Premium Local Shopping
-              </p> */}
+            </div>
+            */}
+
+            <div
+              aria-hidden="true"
+              className="flex select-none flex-col"
+            >
+              <span className="whitespace-nowrap text-xl font-black leading-none tracking-[-0.055em] text-brand-black sm:text-2xl">
+                Pixo<span className="text-brand-red">House</span>
+              </span>
+              <span className="mt-1 whitespace-nowrap text-[0.46rem] font-bold uppercase leading-none tracking-[0.15em] text-brand-text-muted transition-colors duration-300 group-hover:text-brand-black sm:text-[0.5rem] sm:tracking-[0.18em]">
+                Smart Finds, Great Deals
+              </span>
             </div>
           </Link>
         </div>

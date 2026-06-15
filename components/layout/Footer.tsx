@@ -1,7 +1,3 @@
-"use client";
-
-import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { siteConfig } from "@/lib/seo/site";
@@ -22,55 +18,39 @@ const supportLinks = [
   { name: "FAQS", href: "/contact" },
 ];
 
-type SocialLink = {
-  name: string;
-  href: string;
-  color: string;
-  icon: React.ReactNode;
-};
-
-const socialLinks: SocialLink[] = [
+const socialLinks = [
   {
     name: "Facebook",
-    href: "https://www.facebook.com/enterfly26",
-    color: "bg-[#3B5998]",
+    href: "https://www.facebook.com/pixohousee",
+    className: "bg-[#1877F2] hover:bg-[#166FE5]",
     icon: (
-      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <svg
+        className="h-5 w-5"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
       </svg>
     ),
   },
   {
-    name: "Dribbble",
-    href: "#",
-    color: "bg-[#EA4C89]",
+    name: "Instagram",
+    href: "https://www.instagram.com/pixo_house",
+    className:
+      "bg-linear-to-br from-[#833AB4] via-[#FD1D1D] to-[#FCAF45] hover:brightness-110",
     icon: (
-      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 0C5.375 0 0 5.375 0 12s5.375 12 12 12 12-5.375 12-12S18.625 0 12 0zm7.5 9.5c-.188-.063-1.688-.563-3.438-.25.75 2.063 1.063 3.75 1.125 4.125 1.313-.875 2.25-2.25 2.313-3.875zM17.5 15.5c-.125-.688-.563-3.063-1.625-5.188-.063.063-.125.063-.188.125-2.438.875-3.313 2.625-3.375 2.813-.625.875-1 1.938-1 3.125 0 .625.125 1.188.313 1.75 1.375-.75 2.875-1.75 3.938-2.563.313-.188.625-.375.938-.563zm-5.5 4c-1 0-1.938-.188-2.813-.5.188-.313 1.125-1.938 3-3.688.063-.063.125-.063.188-.125.75.188 1.438.375 2.188.5.063 0 .125.063.188.063-.313 1.438-1.125 2.75-2.75 3.75zM9.5 20.5c-1.063-.5-1.938-1.25-2.625-2.188-.188-.25-.375-.563-.563-.875.063 0 .125-.063.188-.063 2.125-.875 4.063-.563 4.688-.438-.063-.125-.063-.25-.125-.375-1.688-2.875-2.313-5.688-2.438-6.563-1.438.75-2.438 2.188-2.563 3.875 0 .063 0 .125.063.188.313 1.25 1.063 2.313 2.063 3.125.313.25.625.5.938.688.188.125.313.25.5.375zm-4.375-8.875c.063-1.313.5-2.5 1.25-3.5.188.063.375.125.563.188 1.813.688 3.813.688 5.188.563.125.25.25.5.313.75-2.188.688-4.125 2.188-5.313 4-.563-.875-.875-1.875-1-3zM12 3.5c1.063 0 2.063.25 2.938.688-.188.25-.375.5-.563.75-1.063 1.563-2.438 2.75-4 3.563-.5-.875-1.063-1.75-1.625-2.563C9.688 4.125 10.813 3.5 12 3.5z" />
+      <svg
+        className="h-5 w-5"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
       </svg>
     ),
   },
-  {
-    name: "Twitter",
-    href: "#",
-    color: "bg-[#1DA1F2]",
-    icon: (
-      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Google Plus",
-    href: "#",
-    color: "bg-[#DD4B39]",
-    icon: (
-      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M7.635 10.909v2.619h4.335c-.173 1.125-1.31 3.295-4.335 3.295-2.604 0-4.731-2.16-4.731-4.823 0-2.662 2.127-4.822 4.731-4.822 1.485 0 2.479.633 3.045 1.178l2.073-1.994c-1.33-1.245-3.056-1.995-5.118-1.995C3.412 4.365 0 7.785 0 12s3.412 7.635 7.635 7.635c4.41 0 7.332-3.098 7.332-7.461 0-.501-.054-.885-.12-1.265H7.635zm16.365 0h-2.183V8.726h-2.183v2.183h-2.182v2.181h2.182v2.184h2.183v-2.184H24v-2.181z" />
-      </svg>
-    ),
-  },
-];
+] as const;
 
 const Footer = () => {
   return (
@@ -79,9 +59,18 @@ const Footer = () => {
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand Section */}
           <div className="col-span-2 sm:col-span-2 md:col-span-1 space-y-3 sm:space-y-4">
-            <div className="flex items-center gap-2">
-              <Image src="/logo/logo.png" alt={`${siteConfig.name} Logo`} width={120} height={100} />
-            </div>
+            <Link
+              href="/"
+              aria-label={`${siteConfig.name} home`}
+              className="group inline-flex flex-col rounded-xl py-1 pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 focus-visible:ring-offset-brand-black"
+            >
+              <span className="whitespace-nowrap text-3xl font-black leading-none tracking-[-0.06em] text-brand-white sm:text-4xl">
+                Pixo<span className="text-brand-red">House</span>
+              </span>
+              <span className="mt-1.5 whitespace-nowrap text-[0.52rem] font-bold uppercase leading-none tracking-[0.22em] text-brand-white/55 transition-colors duration-300 group-hover:text-brand-white/80">
+                Smart Finds, Great Deals
+              </span>
+            </Link>
             <p className="text-brand-white text-xs sm:text-sm leading-relaxed">
               Discover premium verified stores within 50km. Real-time deals, clean UI, and a
               superior local shopping experience.
@@ -136,14 +125,10 @@ const Footer = () => {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={social.name}
-                  className="group relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/75 bg-white shadow-[0_8px_20px_-14px_rgba(17,24,39,0.75)] ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_28px_-18px_rgba(17,24,39,0.8)] sm:h-11 sm:w-11"
+                  aria-label={`Follow ${siteConfig.name} on ${social.name}`}
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-lg ring-1 ring-white/15 transition-all duration-300 hover:-translate-y-1 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-black sm:h-11 sm:w-11 ${social.className}`}
                 >
-                  <span className={`absolute inset-0 ${social.color}`} />
-                  <span className="absolute inset-px rounded-[11px] bg-white/10 backdrop-blur-[1px]" />
-                  <span className="relative z-10 text-white transition-transform duration-300 group-hover:scale-110">
-                    {social.icon}
-                  </span>
+                  {social.icon}
                 </Link>
               ))}
             </div>
