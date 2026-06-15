@@ -18,15 +18,15 @@ export default function FreeShippingBar({
       className={`relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors duration-300 ${
         reached
           ? "border-emerald-200 bg-emerald-50"
-          : "border-violet-100 bg-white"
+          : "border-brand-border bg-brand-white"
       }`}
     >
       <div className="flex items-center gap-2.5">
         <span
           className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white ${
             reached
-              ? "bg-linear-to-br from-emerald-500 to-teal-600"
-              : "bg-linear-to-br from-violet-500 to-indigo-600"
+              ? "bg-emerald-500"
+              : "bg-brand-red"
           }`}
         >
           {reached ? (
@@ -43,7 +43,7 @@ export default function FreeShippingBar({
           ) : (
             <p className="text-sm font-semibold text-gray-800">
               Add{" "}
-              <span className="text-violet-700">
+              <span className="text-brand-red">
                 BDT {remaining.toLocaleString()}
               </span>{" "}
               more for free shipping
@@ -53,8 +53,8 @@ export default function FreeShippingBar({
             <div
               className={`h-full rounded-full transition-all duration-500 ease-out ${
                 reached
-                  ? "bg-linear-to-r from-emerald-400 to-teal-500"
-                  : "bg-linear-to-r from-violet-500 via-fuchsia-500 to-indigo-500"
+                  ? "bg-emerald-500"
+                  : "bg-brand-red"
               }`}
               style={{ width: `${progress}%` }}
             />
