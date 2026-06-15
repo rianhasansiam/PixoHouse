@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Star,
   MessageSquareQuote,
+  Wallet,
 } from "lucide-react";
 
 /**
@@ -39,6 +40,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/banners", label: "Banners", icon: ImageIcon },
   { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
+  { href: "/admin/capital-costs", label: "Capital & Costs", icon: Wallet },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

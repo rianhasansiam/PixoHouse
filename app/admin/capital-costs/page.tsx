@@ -1,0 +1,509 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Receipt, RotateCcw } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+
+import {
+  removeOtherCost,
+  setActivity,
+  setCapital,
+  setCapitalCostOverview,
+  setCapitalCostsError,
+  setCapitalCostsLoading,
+  setOtherCosts,
+  upsertOtherCost,
+} from "@/store/slices/admin-capital-costs.slice";
+import type { AppDispatch, RootState } from "@/store";
+import {
+  buildOtherCostForm,
+  createOtherCost,
+  deleteOtherCost,
+  EMPTY_CAPITAL_FORM,
+  EMPTY_OTHER_COST_FILTERS,
+  emptyOtherCostForm,
+  fetchCapitalCostOverview,
+  fetchOtherCosts,
+  formatCurrency,
+  fromDateTimeLocal,
+  parsePositiveAmount,
+  addCapital,
+  updateOtherCost,
+  type CapitalCostSummary,
+  type CapitalFormState,
+  type OtherCostFilters as Filters,
+  type OtherCostFormState,
+  type OtherCostRow,
+} from "@/features/admin-capital-costs/api";
+import {
+  confirmMajorAction,
+  notifyActionError,
+  notifyActionSuccess,
+} from "@/lib/admin-feedback";
+import { useAnimatedRemoval } from "@/hooks/useAnimatedRemoval";
+
+import CapitalCostSummaryCards from "./components/CapitalCostSummaryCards";
+import CapitalForm from "./components/CapitalForm";
+import ProductCostCard from "./components/ProductCostCard";
+import OtherCostFilters from "./components/OtherCostFilters";
+import OtherCostFormDrawer from "./components/OtherCostFormDrawer";
+import OtherCostsTable from "./components/OtherCostsTable";
+import CapitalCostActivity from "./components/CapitalCostActivity";
+
+const CURRENCY = "BDT";
+
+export default function AdminCapitalCostsPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const capital = useSelector((s: RootState) => s.adminCapitalCosts.capital);
+  const productCost = useSelector(
+    (s: RootState) => s.adminCapitalCosts.productCost,
+  );
+  const otherCosts = useSelector(
+    (s: RootState) => s.adminCapitalCosts.otherCosts,
+  );
+  const activity = useSelector(
+    (s: RootState) => s.adminCapitalCosts.activity,
+  );
+  const isHydrated = useSelector(
+    (s: RootState) => s.adminCapitalCosts.isHydrated,
+  );
+  const isLoading = useSelector((s: RootState) => s.adminCapitalCosts.isLoading);
+  const error = useSelector((s: RootState) => s.adminCapitalCosts.error);
+
+  const [summary, setSummary] = useState<CapitalCostSummary | null>(null);
+
+  // Capital form
+  const [capitalForm, setCapitalForm] =
+    useState<CapitalFormState>(EMPTY_CAPITAL_FORM);
+  const [isSavingCapital, setIsSavingCapital] = useState(false);
+  const [capitalError, setCapitalError] = useState<string | null>(null);
+  const [capitalNote, setCapitalNote] = useState<string | null>(null);
+
+  // Other-cost filters
+  const [filters, setFilters] = useState<Filters>(EMPTY_OTHER_COST_FILTERS);
+  const [filterActive, setFilterActive] = useState(false);
+  const [filteredTotal, setFilteredTotal] = useState(0);
+  const [listLoading, setListLoading] = useState(false);
+
+  // Other-cost drawer
+  const [editing, setEditing] = useState<
+    { mode: "create" } | { mode: "edit"; cost: OtherCostRow } | null
+  >(null);
+  const [costForm, setCostForm] = useState<OtherCostFormState>(
+    emptyOtherCostForm(),
+  );
+  const [isSubmittingCost, setIsSubmittingCost] = useState(false);
+  const [costDrawerError, setCostDrawerError] = useState<string | null>(null);
+
+  // Table delete state
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [listNote, setListNote] = useState<string | null>(null);
+  const { visibleItems: visibleCosts, queueRemoval } = useAnimatedRemoval({
+    items: otherCosts,
+    getId: (cost) => cost.id,
+  });
+
+  /* ---------------------------- Hydration ---------------------------- */
+
+  const refresh = useCallback(async () => {
+    await Promise.resolve();
+
+    dispatch(setCapitalCostsLoading(true));
+    dispatch(setCapitalCostsError(null));
+    try {
+      const overview = await fetchCapitalCostOverview();
+      dispatch(
+        setCapitalCostOverview({
+          capital: overview.capital,
+          productCost: overview.productCost,
+          otherCosts: overview.otherCosts.items,
+          activity: overview.activity,
+        }),
+      );
+      setSummary(overview.summary);
+      setCapitalForm(EMPTY_CAPITAL_FORM);
+      setFilteredTotal(overview.otherCosts.total);
+      setFilterActive(false);
+      setFilters(EMPTY_OTHER_COST_FILTERS);
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load capital & cost data.";
+      dispatch(setCapitalCostsError(message));
+    } finally {
+      dispatch(setCapitalCostsLoading(false));
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (isHydrated) return;
+    const timer = window.setTimeout(() => {
+      void refresh();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isHydrated, refresh]);
+
+  /**
+   * Pull fresh summary/cards + capital without clobbering a filtered
+   * list. Used after a mutation so the headline numbers stay accurate.
+   */
+  const syncSummary = useCallback(async () => {
+    try {
+      const overview = await fetchCapitalCostOverview();
+      setSummary(overview.summary);
+      dispatch(setCapital(overview.capital));
+      dispatch(setActivity(overview.activity));
+      if (!filterActive) {
+        setFilteredTotal(overview.otherCosts.total);
+        dispatch(setOtherCosts(overview.otherCosts.items));
+      }
+    } catch {
+      // Non-fatal: the row-level change already succeeded.
+    }
+  }, [dispatch, filterActive]);
+
+  /* ---------------------------- Capital form ------------------------- */
+
+  const handleCapitalSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    setCapitalError(null);
+    setCapitalNote(null);
+
+    try {
+      const amount = parsePositiveAmount(
+        capitalForm.amount || "0",
+        "Capital amount",
+      );
+
+      setIsSavingCapital(true);
+      const added = await addCapital({
+        amount,
+        note: capitalForm.note.trim() || null,
+      });
+      dispatch(setCapital(added));
+      setCapitalForm(EMPTY_CAPITAL_FORM);
+      await syncSummary();
+      const message = "Capital added.";
+      setCapitalNote(message);
+      notifyActionSuccess(message);
+    } catch (mutation) {
+      const message =
+        mutation instanceof Error ? mutation.message : "Failed to add capital.";
+      setCapitalError(message);
+      notifyActionError(mutation, "Failed to add capital.");
+    } finally {
+      setIsSavingCapital(false);
+    }
+  };
+
+  /* ---------------------------- Filters ------------------------------ */
+
+  const applyFilters = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const result = await fetchOtherCosts({
+        page: 1,
+        pageSize: 100,
+        search: filters.search,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        minAmount: filters.minAmount,
+        maxAmount: filters.maxAmount,
+      });
+      dispatch(setOtherCosts(result.items));
+      setFilteredTotal(result.filteredTotalAmount);
+      const active =
+        Boolean(filters.search) ||
+        Boolean(filters.dateFrom) ||
+        Boolean(filters.dateTo) ||
+        Boolean(filters.minAmount) ||
+        Boolean(filters.maxAmount);
+      setFilterActive(active);
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to filter cost records.";
+      setListError(message);
+      notifyActionError(loadError, "Failed to filter cost records.");
+    } finally {
+      setListLoading(false);
+    }
+  }, [dispatch, filters]);
+
+  const resetFilters = () => {
+    setFilters(EMPTY_OTHER_COST_FILTERS);
+    void refresh();
+  };
+
+  /* ---------------------------- Other-cost CRUD ---------------------- */
+
+  const openCreateCost = () => {
+    setEditing({ mode: "create" });
+    setCostForm(emptyOtherCostForm());
+    setCostDrawerError(null);
+  };
+
+  const openEditCost = (cost: OtherCostRow) => {
+    setEditing({ mode: "edit", cost });
+    setCostForm(buildOtherCostForm(cost));
+    setCostDrawerError(null);
+  };
+
+  const closeCostDrawer = () => {
+    setEditing(null);
+    setCostDrawerError(null);
+  };
+
+  const handleCostSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    if (!editing) return;
+    setCostDrawerError(null);
+    setListNote(null);
+
+    try {
+      const reason = costForm.reason.trim();
+      if (!reason) throw new Error("Reason is required.");
+
+      const amount = parsePositiveAmount(costForm.amount || "0", "Amount");
+
+      const costDate = fromDateTimeLocal(costForm.costDate);
+      if (!costDate) throw new Error("Cost date is required.");
+
+      const body = {
+        amount,
+        reason,
+        description: costForm.description.trim() || null,
+        costDate,
+      };
+
+      setIsSubmittingCost(true);
+      const cost =
+        editing.mode === "create"
+          ? await createOtherCost(body)
+          : await updateOtherCost(editing.cost.id, body);
+      dispatch(upsertOtherCost(cost));
+      await syncSummary();
+      const message =
+        editing.mode === "create"
+          ? "Cost record added."
+          : "Cost record updated.";
+      setListNote(message);
+      notifyActionSuccess(message);
+      closeCostDrawer();
+    } catch (mutation) {
+      const message =
+        mutation instanceof Error
+          ? mutation.message
+          : "Failed to save cost record.";
+      setCostDrawerError(message);
+      notifyActionError(mutation, "Failed to save cost record.");
+    } finally {
+      setIsSubmittingCost(false);
+    }
+  };
+
+  const handleDeleteCost = async (cost: OtherCostRow) => {
+    const confirmed = await confirmMajorAction({
+      title: `Delete "${cost.reason}"?`,
+      description: "This cost record will be permanently removed.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    queueRemoval(
+      cost.id,
+      async () => {
+        setListError(null);
+        setListNote(null);
+        setBusyId(cost.id);
+        try {
+          await deleteOtherCost(cost.id);
+          dispatch(removeOtherCost(cost.id));
+          await syncSummary();
+          setListNote("Cost record deleted.");
+          notifyActionSuccess("Cost record deleted.");
+        } catch (mutation) {
+          const message =
+            mutation instanceof Error
+              ? mutation.message
+              : "Failed to delete cost record.";
+          setListError(message);
+          throw new Error(message);
+        } finally {
+          setBusyId(null);
+        }
+      },
+      (deleteError) => {
+        notifyActionError(deleteError, "Failed to delete cost record.");
+      },
+    );
+  };
+
+  const loadingCards = isLoading && !summary;
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-extrabold text-gray-900 sm:text-xl">
+            Capital &amp; Cost Tracker
+          </h1>
+          <p className="text-xs text-gray-500">
+            Track business capital, inventory cost, and manual costs in one
+            place.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={isLoading}
+          className="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-border bg-white px-3 text-xs font-bold text-brand-red shadow-sm transition-all duration-200 hover:border-brand-red hover:bg-brand-light-bg disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RotateCcw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          {isLoading ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm"
+        >
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
+            <RotateCcw className="h-4 w-4 text-red-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-red-800">
+              Couldn&apos;t load capital &amp; cost data
+            </p>
+            <p className="mt-0.5 wrap-break-word text-sm text-red-700">{error}</p>
+            <p className="mt-1 text-xs text-red-600/80">
+              If this persists right after a schema change, restart the dev
+              server so the Prisma client picks up the new models.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl border border-red-300 bg-white px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Try again
+          </button>
+        </div>
+      )}
+
+      <CapitalCostSummaryCards
+        summary={summary}
+        productCost={productCost}
+        currency={CURRENCY}
+        loading={loadingCards}
+      />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <CapitalForm
+          form={capitalForm}
+          setForm={setCapitalForm}
+          currency={CURRENCY}
+          hasCapital={Boolean(capital)}
+          isLoading={isLoading}
+          isSaving={isSavingCapital}
+          error={capitalError}
+          note={capitalNote}
+          onRefresh={() => void refresh()}
+          onSubmit={handleCapitalSubmit}
+        />
+        <ProductCostCard
+          productCost={productCost}
+          currency={CURRENCY}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Other costs */}
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-brand-border bg-brand-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                <Receipt className="h-4 w-4 text-brand-red" />
+                Other costs
+              </h2>
+              <p className="text-xs text-gray-500">
+                Manual costs you record by hand.{" "}
+                {filterActive ? "Filtered" : "Showing"} total:{" "}
+                <span className="font-semibold text-gray-700">
+                  {formatCurrency(filteredTotal, CURRENCY)}
+                </span>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openCreateCost}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red-hover"
+            >
+              <Plus className="h-4 w-4" />
+              Add other cost
+            </button>
+          </div>
+        </div>
+
+        <OtherCostFilters
+          filters={filters}
+          setFilters={setFilters}
+          onApply={() => void applyFilters()}
+          onReset={resetFilters}
+          isLoading={listLoading}
+        />
+
+        {listError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {listError}
+          </div>
+        )}
+        {listNote && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+            {listNote}
+          </div>
+        )}
+
+        <OtherCostsTable
+          costs={visibleCosts}
+          currency={CURRENCY}
+          busyId={busyId}
+          isLoading={(isLoading && !isHydrated) || listLoading}
+          onEdit={openEditCost}
+          onDelete={(cost) => void handleDeleteCost(cost)}
+        />
+      </div>
+
+      <CapitalCostActivity
+        activity={activity}
+        currency={CURRENCY}
+        isLoading={isLoading && !isHydrated}
+      />
+
+      <OtherCostFormDrawer
+        open={Boolean(editing)}
+        mode={editing?.mode === "edit" ? "edit" : "create"}
+        form={costForm}
+        setForm={setCostForm}
+        currency={CURRENCY}
+        isSubmitting={isSubmittingCost}
+        error={costDrawerError}
+        onClose={closeCostDrawer}
+        onSubmit={handleCostSubmit}
+      />
+    </section>
+  );
+}

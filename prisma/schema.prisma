@@ -679,3 +679,77 @@ enum BannerStatus {
   ACTIVE
   INACTIVE
 }
+
+/**
+ * --------------------------------------------------------------------------
+ */
+/**
+ * Capital & cost tracking (admin-only)
+ */
+/**
+ * --------------------------------------------------------------------------
+ */
+
+// Business capital input by the admin. Treated as a singleton in the
+// service layer (the oldest row wins), mirroring `StoreSettings`, so the
+// admin always edits one running capital figure. ADMIN-ONLY — never
+// exposed on any public/customer API.
+model AdminCapital {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(12, 2)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Manual "other costs" the admin records by hand (rent, salaries, ads,
+// utilities, etc.). Separate from product costs, which are derived from
+// the existing Product/ProductVariant data and never stored here.
+// ADMIN-ONLY.
+model AdminOtherCost {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  reason      String
+  description String?
+  costDate    DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([costDate])
+  @@index([reason])
+}
+
+// Append-only activity feed for the Capital & Cost Tracker. Records every
+// capital change and manual-cost mutation (with the note/reason that
+// accompanied it) so the admin can review what happened on this page over
+// time. ADMIN-ONLY and isolated — it only logs actions taken within this
+// feature and is never exposed to customers.
+enum CapitalCostActivityType {
+  CAPITAL_SET
+  CAPITAL_UPDATED
+  CAPITAL_ADDED
+  COST_CREATED
+  COST_UPDATED
+  COST_DELETED
+}
+
+model AdminCapitalCostActivity {
+  id          String                  @id @default(cuid())
+  type        CapitalCostActivityType
+  // Human-readable summary, e.g. "Capital updated to BDT 100,000".
+  description String
+  // Optional money figure tied to the action (capital amount / cost amount).
+  amount      Decimal?                @db.Decimal(12, 2)
+  // The note (capital) or reason (cost) supplied at the time of the action.
+  note        String?
+  // Loose reference to the affected row; nullable for deletes.
+  entityId    String?
+  // Which admin performed the action (snapshot, so the feed survives even
+  // if the user is later renamed or removed).
+  actorId     String?
+  actorName   String?
+  actorEmail  String?
+  createdAt   DateTime                @default(now())
+
+  @@index([createdAt])
+}
