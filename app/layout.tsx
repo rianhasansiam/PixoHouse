@@ -37,11 +37,6 @@ export const metadata: Metadata = {
   referrer: "origin-when-cross-origin",
   formatDetection: { email: false, address: false, telephone: false },
   alternates: { canonical: "/" },
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/logo/logo.png",
-  },
   openGraph: {
     type: "website",
     locale: siteConfig.locale,
