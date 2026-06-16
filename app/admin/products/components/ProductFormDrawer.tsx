@@ -21,6 +21,30 @@ type CategoryChoice = { id: string; name: string };
 const inputClass =
   "h-10 w-full rounded-xl border border-brand-border px-3 text-sm outline-none transition focus:border-brand-red";
 
+const HEX_COLOR_VALUE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const HEX_COLOR_BODY = /^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function formatHexInputValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("#")) return trimmed.toUpperCase();
+  if (/^[0-9a-f]{1,8}$/i.test(trimmed)) return `#${trimmed.toUpperCase()}`;
+  return trimmed;
+}
+
+function normalizeHexInputValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("#")
+    ? trimmed.toUpperCase()
+    : `#${trimmed.toUpperCase()}`;
+}
+
+function isRenderableHex(value: string): boolean {
+  const trimmed = value.trim();
+  return HEX_COLOR_VALUE.test(trimmed) || HEX_COLOR_BODY.test(trimmed);
+}
+
 export default function ProductFormDrawer({
   open,
   mode,
@@ -225,6 +249,14 @@ export default function ProductFormDrawer({
                       variant.size.trim() !== "" &&
                       variant.color.trim() !== "" &&
                       (comboCounts.get(comboKey) ?? 0) > 1;
+                    const colorHexInputValue = formatHexInputValue(variant.color);
+                    const colorPreview = isRenderableHex(colorHexInputValue)
+                      ? normalizeHexInputValue(colorHexInputValue)
+                      : null;
+                    const colorHasInvalidHex =
+                      colorHexInputValue.startsWith("#") &&
+                      colorHexInputValue.length > 0 &&
+                      !HEX_COLOR_VALUE.test(colorHexInputValue);
 
                     return (
                       <div
@@ -261,15 +293,54 @@ export default function ProductFormDrawer({
                             />
                           </Field>
 
-                          <Field label="Color" required>
-                            <AdvancedColorPicker
-                              label="Variant color"
-                              alpha={false}
-                              value={variant.color}
-                              onChange={(color) => updateVariant(index, { color })}
-                              disabled={isSubmitting}
-                            />
-                          </Field>
+                          <div className="block space-y-1.5">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              Color *
+                            </span>
+                            <div className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                              <AdvancedColorPicker
+                                label="Variant color"
+                                alpha={false}
+                                value={variant.color}
+                                onChange={(color) => updateVariant(index, { color })}
+                                disabled={isSubmitting}
+                              />
+                              <div className="relative">
+                                <span
+                                  aria-hidden
+                                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-md ring-1 ring-inset ring-black/15"
+                                  style={{
+                                    backgroundColor: colorPreview ?? "#ffffff",
+                                  }}
+                                />
+                                <input
+                                  value={colorHexInputValue}
+                                  onChange={(event) =>
+                                    updateVariant(index, {
+                                      color: normalizeHexInputValue(event.target.value),
+                                    })
+                                  }
+                                  disabled={isSubmitting}
+                                  spellCheck={false}
+                                  inputMode="text"
+                                  maxLength={9}
+                                  aria-label={`Variant ${index + 1} hex color`}
+                                  className={cn(
+                                    inputClass,
+                                    "pl-9 font-mono text-xs font-semibold uppercase",
+                                    colorHasInvalidHex &&
+                                      "border-red-300 focus:border-red-500",
+                                  )}
+                                  placeholder="#111827"
+                                />
+                              </div>
+                            </div>
+                            {colorHasInvalidHex && (
+                              <p className="text-[11px] font-semibold text-red-600">
+                                Enter a valid hex color.
+                              </p>
+                            )}
+                          </div>
                         </div>
 
                         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">

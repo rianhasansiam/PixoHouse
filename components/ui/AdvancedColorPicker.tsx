@@ -145,14 +145,14 @@ export function AdvancedColorPicker({
         aria-expanded={open}
         aria-label={`${label}: ${value || "none"}. Click to edit.`}
         className={cn(
-          "group flex h-10 w-full items-center gap-2.5 rounded-xl border border-violet-200 bg-white px-2.5 text-sm outline-none transition",
+          "group flex h-10 w-full items-center gap-2.5 rounded-xl border border-violet-200 bg-white px-1.5 text-sm outline-none transition",
           "hover:border-violet-400 focus-visible:border-violet-500 focus-visible:ring-2 focus-visible:ring-violet-200",
           disabled && "cursor-not-allowed opacity-60",
         )}
       >
         <span
           aria-hidden
-          className="h-6 w-6 shrink-0 rounded-md ring-1 ring-inset ring-black/10"
+          className="h-6 w-6 shrink-0  rounded-md ring-1 ring-inset ring-black/10"
           style={{
             backgroundColor: swatchColor,
             backgroundImage:
@@ -166,6 +166,8 @@ export function AdvancedColorPicker({
             style={{ backgroundColor: swatchColor }}
           />
         </span>
+
+
         <span className="min-w-0 flex-1 truncate text-left font-mono text-xs uppercase text-gray-700">
           {value || "Choose a color"}
         </span>
@@ -175,7 +177,7 @@ export function AdvancedColorPicker({
         <div
           role="dialog"
           aria-label={`${label} picker`}
-          className="absolute z-50 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-violet-100 bg-white p-3 shadow-xl ring-1 ring-black/5"
+          className="absolute -left-24 z-50 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-violet-100 bg-white p-3 shadow-xl ring-1 ring-black/5"
         >
           <HexColorPicker
             color={base}

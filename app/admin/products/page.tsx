@@ -34,6 +34,17 @@ import ProductsToolbar from "./components/ProductsToolbar";
 import ProductsTable from "./components/ProductsTable";
 import ProductFormDrawer from "./components/ProductFormDrawer";
 
+const HEX_COLOR_VALUE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const HEX_COLOR_BODY = /^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function normalizeColorForSubmit(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("#")) return trimmed.toUpperCase();
+  if (HEX_COLOR_BODY.test(trimmed)) return `#${trimmed.toUpperCase()}`;
+  return trimmed;
+}
+
 export default function AdminProductsPage() {
   const dispatch = useDispatch<AppDispatch>();
   const products = useSelector((state: RootState) => state.adminProducts.items);
@@ -225,9 +236,15 @@ export default function AdminProductsPage() {
 
     for (const [index, row] of form.variants.entries()) {
       const size = row.size.trim();
-      const color = row.color.trim();
+      const color = normalizeColorForSubmit(row.color);
       if (!size || !color) {
         setMutationError(`Variant ${index + 1}: size and color are required.`);
+        return;
+      }
+      if (color.startsWith("#") && !HEX_COLOR_VALUE.test(color)) {
+        setMutationError(
+          `Variant ${index + 1}: enter a valid hex color code.`,
+        );
         return;
       }
       const comboKey = `${size.toLowerCase()}|${color.toLowerCase()}`;

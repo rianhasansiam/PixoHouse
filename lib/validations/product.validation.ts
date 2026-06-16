@@ -18,6 +18,7 @@ import { z } from "zod";
 const PRODUCT_STATUS = ["ACTIVE", "INACTIVE"] as const;
 
 const SORT_VALUES = ["latest", "price-low", "price-high"] as const;
+const HEX_COLOR_VALUE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 /** Common reusable fragments. */
 const name = z
@@ -58,6 +59,15 @@ const stock = z
   .int("Stock must be a whole number.")
   .nonnegative("Stock cannot be negative.");
 
+const variantColor = z
+  .string()
+  .trim()
+  .min(1, "Color is required.")
+  .max(40)
+  .refine((value) => !value.startsWith("#") || HEX_COLOR_VALUE.test(value), {
+    message: "Color hex code must be valid.",
+  });
+
 const image = z
   .string()
   .trim()
@@ -76,7 +86,7 @@ const images = z.array(z.string().trim().max(2048)).max(20).optional();
 const variantInput = z.object({
   id: z.string().trim().min(1).optional(),
   size: z.string().trim().min(1, "Size is required.").max(40),
-  color: z.string().trim().min(1, "Color is required.").max(40),
+  color: variantColor,
   sku: z.string().trim().min(1).max(80).optional().nullable(),
   stock: stock.default(0),
   image: image,
