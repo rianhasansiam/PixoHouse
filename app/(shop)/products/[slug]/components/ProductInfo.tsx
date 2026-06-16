@@ -31,7 +31,7 @@ type ProductSpec = {
 type ProductInfoProps = {
   name: string
   specs: ProductSpec[]
-  deliveryTime?: string
+ 
   productCode?: string | null
 }
 
@@ -76,7 +76,6 @@ const iconMap: Record<IconName, LucideIcon> = {
 const ProductInfo: React.FC<ProductInfoProps> = ({
   name,
   specs,
-  deliveryTime = '2 Hours',
   productCode,
 }) => {
   return (
@@ -113,9 +112,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
         </div>
       )}
 
-      {deliveryTime && (
-        <p className="text-sm text-brand-red">Delivery in {deliveryTime}</p>
-      )}
+     
     </div>
   )
 }

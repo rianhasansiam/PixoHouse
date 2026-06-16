@@ -212,7 +212,7 @@ export default async function ProductDetailsPage({ params }: Props) {
               <ProductInfo
                 name={product.name}
                 specs={[]}
-                deliveryTime="2 Hours"
+            
                 productCode={product.productCode}
               />
 
