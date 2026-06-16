@@ -22,6 +22,7 @@ const STATUS = ["ACTIVE", "INACTIVE"] as const;
  * of color fields to honor.
  */
 const BG_TYPE = ["gradient", "solid"] as const;
+const HEX_COLOR_VALUE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 const url = z.string().trim().min(1, "URL is required.").max(2048);
 
@@ -30,6 +31,11 @@ const optionalUrl = z.string().trim().max(2048).optional().nullable();
 const shortText = z.string().trim().min(1).max(120);
 const mediumText = z.string().trim().min(1).max(280);
 const longText = z.string().trim().min(1).max(500);
+const colorText = shortText.refine(
+  (value) => !value.startsWith("#") || HEX_COLOR_VALUE.test(value),
+  { message: "Color hex code must be valid." },
+);
+const optionalColorText = colorText.optional().nullable();
 
 /* -------------------------------------------------------------------------- */
 /*  Carousel banners                                                          */
@@ -42,10 +48,10 @@ const carouselFields = {
   description: longText,
   badge: shortText,
   bgType: z.enum(BG_TYPE).default("gradient"),
-  bgFrom: shortText.optional().nullable(),
-  bgVia: shortText.optional().nullable(),
-  bgTo: shortText.optional().nullable(),
-  bgColor: shortText.optional().nullable(),
+  bgFrom: optionalColorText,
+  bgVia: optionalColorText,
+  bgTo: optionalColorText,
+  bgColor: optionalColorText,
   link: optionalUrl,
   position: z.coerce.number().int().min(0).max(9999).default(0),
   status: z.enum(STATUS).default("ACTIVE"),
@@ -87,10 +93,10 @@ export const updateCarouselBannerSchema = z
     description: longText.optional(),
     badge: shortText.optional(),
     bgType: z.enum(BG_TYPE).optional(),
-    bgFrom: shortText.optional().nullable(),
-    bgVia: shortText.optional().nullable(),
-    bgTo: shortText.optional().nullable(),
-    bgColor: shortText.optional().nullable(),
+    bgFrom: optionalColorText,
+    bgVia: optionalColorText,
+    bgTo: optionalColorText,
+    bgColor: optionalColorText,
     link: optionalUrl,
     position: z.coerce.number().int().min(0).max(9999).optional(),
     status: z.enum(STATUS).optional(),
@@ -180,7 +186,7 @@ const dealFields = {
   image: url,
   title: shortText,
   subtitle: shortText,
-  bgClass: shortText,
+  bgClass: colorText,
   link: optionalUrl,
   position: z.coerce.number().int().min(0).max(9999).default(0),
   status: z.enum(STATUS).default("ACTIVE"),
@@ -193,7 +199,7 @@ export const updateDealBannerSchema = z
     image: url.optional(),
     title: shortText.optional(),
     subtitle: shortText.optional(),
-    bgClass: shortText.optional(),
+    bgClass: colorText.optional(),
     link: optionalUrl,
     position: z.coerce.number().int().min(0).max(9999).optional(),
     status: z.enum(STATUS).optional(),
@@ -211,7 +217,7 @@ const promoFields = {
   title: shortText,
   subtitle: shortText,
   discount: shortText,
-  bgClass: shortText,
+  bgClass: colorText,
   link: optionalUrl,
   position: z.coerce.number().int().min(0).max(9999).default(0),
   status: z.enum(STATUS).default("ACTIVE"),
@@ -225,7 +231,7 @@ export const updatePromoBannerSchema = z
     title: shortText.optional(),
     subtitle: shortText.optional(),
     discount: shortText.optional(),
-    bgClass: shortText.optional(),
+    bgClass: colorText.optional(),
     link: optionalUrl,
     position: z.coerce.number().int().min(0).max(9999).optional(),
     status: z.enum(STATUS).optional(),

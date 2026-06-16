@@ -17,6 +17,104 @@ import AdvancedColorPicker from "@/components/ui/AdvancedColorPicker";
 
 import Field from "@/app/admin/components/Field";
 
+const colorInputClass =
+  "h-10 w-full rounded-xl border border-brand-border px-3 text-sm outline-none transition focus:border-brand-red";
+
+const HEX_COLOR_VALUE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const HEX_COLOR_BODY = /^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function formatHexInputValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("#")) return trimmed.toUpperCase();
+  if (/^[0-9a-f]{1,8}$/i.test(trimmed)) return `#${trimmed.toUpperCase()}`;
+  return "";
+}
+
+function normalizeHexInputValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.startsWith("#")
+    ? trimmed.toUpperCase()
+    : `#${trimmed.toUpperCase()}`;
+}
+
+function isRenderableHex(value: string): boolean {
+  const trimmed = value.trim();
+  return HEX_COLOR_VALUE.test(trimmed) || HEX_COLOR_BODY.test(trimmed);
+}
+
+function BannerColorField({
+  label,
+  pickerLabel,
+  value,
+  required,
+  onChange,
+}: {
+  label: string;
+  pickerLabel: string;
+  value: string;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const hexInputValue = formatHexInputValue(value);
+  const colorPreview = isRenderableHex(hexInputValue)
+    ? normalizeHexInputValue(hexInputValue)
+    : null;
+  const hasInvalidHex =
+    hexInputValue.startsWith("#") &&
+    hexInputValue.length > 0 &&
+    !HEX_COLOR_VALUE.test(hexInputValue);
+
+  return (
+    <div className="flex flex-col gap-1.5 text-sm">
+      <span className="flex items-center gap-1.5 font-semibold text-gray-700">
+        {label}
+        {required && <span className="ml-0.5 text-brand-red">*</span>}
+      </span>
+
+      
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+        <AdvancedColorPicker
+          label={pickerLabel}
+          value={value}
+          onChange={onChange}
+        />
+        <div className="relative">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-md ring-1 ring-inset ring-black/15"
+            style={{ backgroundColor: colorPreview ?? "#ffffff" }}
+          />
+          <input
+            value={hexInputValue}
+            onChange={(event) => onChange(normalizeHexInputValue(event.target.value))}
+            spellCheck={false}
+            inputMode="text"
+            maxLength={9}
+            aria-label={`${pickerLabel} hex color`}
+            className={[
+              colorInputClass,
+              "pl-9 font-mono text-xs font-semibold uppercase",
+              hasInvalidHex ? "border-red-300 focus:border-red-500" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            placeholder="#111827"
+          />
+        </div>
+      </div>
+
+
+      {hasInvalidHex && (
+        <span className="text-[11px] font-semibold text-red-600">
+          Enter a valid hex color.
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function CarouselFormFields({
   form,
   setForm,
@@ -84,36 +182,35 @@ export function CarouselFormFields({
         </select>
       </Field>
       {form.bgType === "solid" ? (
-        <Field label="Background color" required>
-          <AdvancedColorPicker
-            label="Background color"
-            value={form.bgColor}
-            onChange={(value) => update("bgColor", value)}
-          />
-        </Field>
+        <BannerColorField
+          label="Background color"
+          pickerLabel="Background color"
+          value={form.bgColor}
+          required
+          onChange={(value) => update("bgColor", value)}
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field label="From" required>
-            <AdvancedColorPicker
-              label="Gradient from color"
-              value={form.bgFrom}
-              onChange={(value) => update("bgFrom", value)}
-            />
-          </Field>
-          <Field label="Via">
-            <AdvancedColorPicker
-              label="Gradient via color"
-              value={form.bgVia}
-              onChange={(value) => update("bgVia", value)}
-            />
-          </Field>
-          <Field label="To" required>
-            <AdvancedColorPicker
-              label="Gradient to color"
-              value={form.bgTo}
-              onChange={(value) => update("bgTo", value)}
-            />
-          </Field>
+        <div className="grid grid-cols-1 gap-3">
+          <BannerColorField
+            label="From"
+            pickerLabel="Gradient from color"
+            value={form.bgFrom}
+            required
+            onChange={(value) => update("bgFrom", value)}
+          />
+          <BannerColorField
+            label="Via"
+            pickerLabel="Gradient via color"
+            value={form.bgVia}
+            onChange={(value) => update("bgVia", value)}
+          />
+          <BannerColorField
+            label="To"
+            pickerLabel="Gradient to color"
+            value={form.bgTo}
+            required
+            onChange={(value) => update("bgTo", value)}
+          />
         </div>
       )}
       <Field label="Link">
@@ -280,13 +377,13 @@ export function DealFormFields({
           />
         </Field>
       </div>
-      <Field label="Background color" required>
-        <AdvancedColorPicker
-          label="Deal background color"
-          value={form.bgClass}
-          onChange={(value) => update("bgClass", value)}
-        />
-      </Field>
+      <BannerColorField
+        label="Background color"
+        pickerLabel="Deal background color"
+        value={form.bgClass}
+        required
+        onChange={(value) => update("bgClass", value)}
+      />
       <Field label="Link">
         <input
           value={form.link}
@@ -367,13 +464,13 @@ export function PromoFormFields({
           placeholder="UP TO 60% OFF"
         />
       </Field>
-      <Field label="Background color" required>
-        <AdvancedColorPicker
-          label="Promo background color"
-          value={form.bgClass}
-          onChange={(value) => update("bgClass", value)}
-        />
-      </Field>
+      <BannerColorField
+        label="Background color"
+        pickerLabel="Promo background color"
+        value={form.bgClass}
+        required
+        onChange={(value) => update("bgClass", value)}
+      />
       <Field label="Link">
         <input
           value={form.link}
