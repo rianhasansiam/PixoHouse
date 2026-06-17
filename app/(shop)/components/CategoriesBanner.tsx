@@ -15,7 +15,7 @@ export const CategoriesBanner = ({ saleBanner }: { saleBanner: SaleBanner }) => 
         src={saleBanner.image}
         alt={saleBanner.heading}
         fill
-        className="object-cover opacity-30 group-hover:opacity-40 group-hover:scale-110 transition-all duration-500"
+        className="object-cover opacity-80 group-hover:opacity-50 group-hover:scale-110 transition-all duration-500"
       />
       {/* Decorative elements */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-brand-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
