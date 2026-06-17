@@ -177,7 +177,7 @@ export function AdvancedColorPicker({
         <div
           role="dialog"
           aria-label={`${label} picker`}
-          className="absolute  z-50 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-violet-100 bg-white p-3 shadow-xl ring-1 ring-black/5"
+          className="absolute -left-24  z-50 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-violet-100 bg-white p-3 shadow-xl ring-1 ring-black/5"
         >
           <HexColorPicker
             color={base}

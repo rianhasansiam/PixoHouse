@@ -3,11 +3,20 @@
 import Link from "next/link";
 import {
   Activity,
+  ArrowRight,
+  FolderTree,
   Inbox,
+  ImageIcon,
   Mail,
+  MessageSquareQuote,
   Package,
+  Settings,
+  ShieldCheck,
   ShoppingBag,
+  Star,
+  User,
   UserPlus,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,7 +32,18 @@ const KIND_META: Record<
 > = {
   order: { icon: ShoppingBag, tile: "bg-brand-red/10 text-brand-red" },
   product: { icon: Package, tile: "bg-brand-red/10 text-brand-red" },
+  category: { icon: FolderTree, tile: "bg-brand-red/10 text-brand-red" },
+  banner: { icon: ImageIcon, tile: "bg-brand-red/10 text-brand-red" },
   message: { icon: Mail, tile: "bg-brand-red/10 text-brand-red" },
+  review: { icon: Star, tile: "bg-brand-red/10 text-brand-red" },
+  testimonial: {
+    icon: MessageSquareQuote,
+    tile: "bg-brand-red/10 text-brand-red",
+  },
+  settings: { icon: Settings, tile: "bg-brand-red/10 text-brand-red" },
+  capital: { icon: Wallet, tile: "bg-brand-red/10 text-brand-red" },
+  cost: { icon: Wallet, tile: "bg-brand-red/10 text-brand-red" },
+  courier: { icon: ShieldCheck, tile: "bg-brand-red/10 text-brand-red" },
   user: { icon: UserPlus, tile: "bg-brand-red/10 text-brand-red" },
 };
 
@@ -35,9 +55,18 @@ type ActivityFeedProps = {
 export default function ActivityFeed({ activity, loading }: ActivityFeedProps) {
   return (
     <section className="rounded-2xl border border-brand-border bg-white p-4 shadow-sm sm:p-5">
-      <header className="mb-4 flex items-center gap-2">
-        <Activity className="h-4 w-4 text-brand-red" />
-        <h2 className="text-sm font-bold text-gray-900">Recent Activity</h2>
+      <header className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-brand-red" />
+          <h2 className="text-sm font-bold text-gray-900">Recent Activity</h2>
+        </div>
+        <Link
+          href="/admin/activities"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-brand-red transition-colors hover:bg-brand-red/10"
+        >
+          View All
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </header>
 
       {loading ? (
@@ -59,7 +88,7 @@ export default function ActivityFeed({ activity, loading }: ActivityFeedProps) {
             Nothing yet
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            Recent customer and catalog activity will appear here.
+            Recent admin, customer, and catalog activity will appear here.
           </p>
         </div>
       ) : (
@@ -67,6 +96,7 @@ export default function ActivityFeed({ activity, loading }: ActivityFeedProps) {
           {activity.map((entry) => {
             const meta = KIND_META[entry.kind];
             const Icon = meta.icon;
+            const performedBy = entry.performedBy?.trim();
 
             return (
               <li key={entry.id} className="relative">
@@ -102,8 +132,20 @@ export default function ActivityFeed({ activity, loading }: ActivityFeedProps) {
                     </>
                   )}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500">
-                  {formatRelative(entry.at)}
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-gray-500">
+                  <span>{formatRelative(entry.at)}</span>
+                  {performedBy && (
+                    <>
+                      <span aria-hidden>·</span>
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        <span>Performed by</span>
+                        <span className="font-medium text-gray-700">
+                          {performedBy}
+                        </span>
+                      </span>
+                    </>
+                  )}
                 </p>
               </li>
             );

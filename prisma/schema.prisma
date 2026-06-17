@@ -753,3 +753,25 @@ model AdminCapitalCostActivity {
 
   @@index([createdAt])
 }
+
+// Append-only feed for admin panel actions across modules. Each row
+// snapshots the admin identity so the dashboard can show who performed
+// the action even if the User row is renamed later.
+model AdminActivityLog {
+  id       String  @id @default(cuid())
+  kind     String
+  action   String
+  target   String?
+  targetId String?
+  href     String?
+
+  actorId    String?
+  actorName  String?
+  actorEmail String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([kind, createdAt])
+  @@index([actorId, createdAt])
+}

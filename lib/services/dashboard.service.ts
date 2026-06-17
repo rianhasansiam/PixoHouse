@@ -4,7 +4,9 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { round2, toNumber } from "@/lib/money";
-import type { OrderStatus } from "@/lib/orders/status";
+import { type OrderStatus } from "@/lib/orders/status";
+import { type AdminActivityKind } from "@/lib/services/admin-activity.service";
+import { getRecentActivityFeed } from "@/lib/services/activity-feed.service";
 
 /**
  * Aggregations powering the admin dashboard page.
@@ -21,7 +23,9 @@ import type { OrderStatus } from "@/lib/orders/status";
 const SALES_SERIES_DAYS = 14;
 const TOP_PRODUCTS_LIMIT = 5;
 const RECENT_ORDERS_LIMIT = 6;
-const ACTIVITY_FEED_LIMIT = 8;
+/** Dashboard's Recent Activity card shows only the latest few; the full
+ *  history lives on the standalone `/admin/activities` page. */
+const DASHBOARD_ACTIVITY_DISPLAY_LIMIT = 10;
 
 const TOP_PRODUCTS_WINDOW_DAYS = 30;
 
@@ -104,11 +108,7 @@ export type DashboardTopProduct = {
   status: "ACTIVE" | "INACTIVE";
 };
 
-export type DashboardActivityKind =
-  | "order"
-  | "user"
-  | "product"
-  | "message";
+export type DashboardActivityKind = AdminActivityKind;
 
 export type DashboardActivity = {
   id: string;
@@ -116,6 +116,7 @@ export type DashboardActivity = {
   actor: string;
   action: string;
   target: string | null;
+  performedBy: string | null;
   href: string | null;
   at: string;
 };
@@ -430,117 +431,24 @@ async function loadTopProducts(now: Date): Promise<DashboardTopProduct[]> {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Merge a few recent events from different tables into one feed.
- * Each source contributes up to `ACTIVITY_FEED_LIMIT` entries and the
- * final list is sorted by timestamp; the page only ever shows the
- * latest few so over-fetching here is fine.
+ * The dashboard's Recent Activity card is the latest slice of the shared,
+ * read-only activity feed (`activity-feed.service`). That service merges
+ * every activity source at read time, so the dashboard and the full
+ * `/admin/activities` page always agree — there is no second merge to
+ * drift and no duplicated records in the database.
  */
 async function loadActivity(): Promise<DashboardActivity[]> {
-  const [orders, users, products, messages] = await Promise.all([
-    prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: ACTIVITY_FEED_LIMIT,
-      select: {
-        id: true,
-        orderNumber: true,
-        customerName: true,
-        status: true,
-        createdAt: true,
-        totalAmount: true,
-      },
-    }),
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      take: ACTIVITY_FEED_LIMIT,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-        provider: true,
-      },
-    }),
-    prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
-      take: ACTIVITY_FEED_LIMIT,
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        category: { select: { name: true } },
-      },
-    }),
-    prisma.contactMessage.findMany({
-      orderBy: { createdAt: "desc" },
-      take: ACTIVITY_FEED_LIMIT,
-      select: {
-        id: true,
-        name: true,
-        subject: true,
-        createdAt: true,
-      },
-    }),
-  ]);
-
-  const merged: DashboardActivity[] = [];
-
-  for (const order of orders) {
-    merged.push({
-      id: `order-${order.id}`,
-      kind: "order",
-      actor: order.customerName || "Customer",
-      action:
-        order.status === "CANCELLED"
-          ? "cancelled order"
-          : "placed an order",
-      target: `#${order.orderNumber}`,
-      href: `/admin/orders`,
-      at: order.createdAt.toISOString(),
-    });
-  }
-
-  for (const user of users) {
-    merged.push({
-      id: `user-${user.id}`,
-      kind: "user",
-      actor: user.name || user.email || "New customer",
-      action:
-        user.provider === "GOOGLE"
-          ? "signed up with Google"
-          : "registered an account",
-      target: null,
-      href: `/admin/users`,
-      at: user.createdAt.toISOString(),
-    });
-  }
-
-  for (const product of products) {
-    merged.push({
-      id: `product-${product.id}`,
-      kind: "product",
-      actor: "Catalog",
-      action: "added new product",
-      target: product.name,
-      href: `/admin/products`,
-      at: product.createdAt.toISOString(),
-    });
-  }
-
-  for (const message of messages) {
-    merged.push({
-      id: `message-${message.id}`,
-      kind: "message",
-      actor: message.name || "Visitor",
-      action: "sent a message",
-      target: message.subject,
-      href: `/admin/messages`,
-      at: message.createdAt.toISOString(),
-    });
-  }
-
-  return merged
-    .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, ACTIVITY_FEED_LIMIT);
+  const items = await getRecentActivityFeed(DASHBOARD_ACTIVITY_DISPLAY_LIMIT);
+  return items.map((item) => ({
+    id: item.id,
+    kind: item.kind,
+    actor: item.performedBy,
+    action: item.action,
+    target: item.target,
+    performedBy: item.performedBy,
+    href: item.href,
+    at: item.createdAt,
+  }));
 }
 
 /* -------------------------------------------------------------------------- */

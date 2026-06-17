@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
 import { revalidateCacheTags } from "@/lib/cache/revalidation";
+import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import { updateUserRole } from "@/lib/services/user.service";
 import { handleServiceError } from "@/lib/services/service-error";
 import { updateUserRoleSchema } from "@/lib/validations/user.validation";
@@ -49,6 +50,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const user = await updateUserRole(id, parsed.data);
+    await logAdminActivity({
+      kind: "user",
+      action: "updated",
+      target: user.name || user.email || "customer role",
+      targetId: user.id,
+      href: "/admin/users",
+      actor: guard.session.user,
+    });
     revalidateCacheTags(["admin-users"]);
     return ok(user);
   } catch (error) {

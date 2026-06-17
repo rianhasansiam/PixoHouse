@@ -70,7 +70,15 @@ export type DashboardActivityKind =
   | "order"
   | "user"
   | "product"
-  | "message";
+  | "category"
+  | "banner"
+  | "message"
+  | "review"
+  | "testimonial"
+  | "settings"
+  | "capital"
+  | "cost"
+  | "courier";
 
 export type DashboardActivity = {
   id: string;
@@ -78,6 +86,7 @@ export type DashboardActivity = {
   actor: string;
   action: string;
   target: string | null;
+  performedBy: string | null;
   href: string | null;
   at: string;
 };

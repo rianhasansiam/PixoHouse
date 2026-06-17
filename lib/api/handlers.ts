@@ -6,6 +6,7 @@ import { type ZodType, z } from "zod";
 import { requireAdmin } from "@/lib/api/guards";
 import { created, jsonError, ok, type ApiMeta } from "@/lib/api/response";
 import { revalidateCacheTags } from "@/lib/cache/revalidation";
+import { logAdminRouteActivity } from "@/lib/services/admin-activity.service";
 import { handleServiceError } from "@/lib/services/service-error";
 
 /**
@@ -197,6 +198,11 @@ export function adminJsonRoute<
         request,
         session: guard.session,
       });
+      await logAdminRouteActivity({
+        scope,
+        method: request.method,
+        actor: guard.session.user,
+      });
       revalidateCacheTags(revalidate);
       return envelope(result);
     } catch (error) {
@@ -250,6 +256,11 @@ export function adminRoute<
         request,
         session: guard.session,
         query,
+      });
+      await logAdminRouteActivity({
+        scope,
+        method: request.method,
+        actor: guard.session.user,
       });
       revalidateCacheTags(revalidate);
       return envelope(result);

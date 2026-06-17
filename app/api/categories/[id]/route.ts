@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
+import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
   getCategoryById,
   hardDeleteCategoryWithProducts,
@@ -60,6 +61,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const category = await updateCategory(id, parsed.data);
+    await logAdminActivity({
+      kind: "category",
+      action: "Category updated",
+      target: category.name,
+      targetId: category.id,
+      href: "/admin/categories",
+      actor: guard.session.user,
+    });
     revalidateTag("categories", "max");
     revalidateTag("home-categories", "max");
     return ok(category);
@@ -93,6 +102,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
   try {
     const result = await hardDeleteCategoryWithProducts(id);
+    await logAdminActivity({
+      kind: "category",
+      action: "Category deleted",
+      target: existing.name,
+      targetId: existing.id,
+      href: "/admin/categories",
+      actor: guard.session.user,
+    });
     revalidateTag("categories", "max");
     revalidateTag("home-categories", "max");
     return ok(result.category);

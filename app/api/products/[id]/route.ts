@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { isAdminRequest, requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
+import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
   getProductById,
   hardDeleteProduct,
@@ -98,6 +99,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   try {
     const product = await updateProduct(id, parsed.data);
+    await logAdminActivity({
+      kind: "product",
+      action: "updated",
+      target: product.name,
+      targetId: product.id,
+      href: "/admin/products",
+      actor: guard.session.user,
+    });
     revalidateTag("home-categories", "max");
     revalidateTag("categories", "max");
     return ok(serializeProduct(product, { includeBuyingPrice: true }));
@@ -156,6 +165,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
   try {
     await hardDeleteProduct(id);
+    await logAdminActivity({
+      kind: "product",
+      action: "deleted",
+      target: existing.name,
+      targetId: existing.id,
+      href: "/admin/products",
+      actor: guard.session.user,
+    });
     revalidateTag("home-categories", "max");
     revalidateTag("categories", "max");
     return ok(serializeProduct(existing));

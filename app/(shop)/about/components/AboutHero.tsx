@@ -1,35 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Sparkles, MapPin } from "lucide-react";
+import { ChevronRight, Sparkles, PackageCheck } from "lucide-react";
 
 export default function AboutHero() {
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-brand-black px-6 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-white shadow-xl">
+    <section className="relative overflow-hidden rounded-3xl bg-brand-black px-6 py-12 text-white shadow-xl sm:px-10 sm:py-16 lg:px-14 lg:py-20">
       {/* Decorative blobs */}
-      <div className="absolute -top-20 -right-20 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-brand-red/20 blur-3xl" />
-      <div className="absolute top-10 right-10 hidden h-24 w-24 rounded-full bg-brand-red/20 blur-xl sm:block" />
+      <div className="absolute right-10 top-10 hidden h-24 w-24 rounded-full bg-brand-red/20 blur-xl sm:block" />
 
       <div className="relative z-10 grid items-center gap-8 lg:grid-cols-2">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 backdrop-blur-sm ring-1 ring-white/20">
             <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
-            <span className="text-[11px] font-bold tracking-wide uppercase">
+            <span className="text-[11px] font-bold uppercase tracking-wide">
               About PixoHouse
             </span>
           </div>
 
           <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-            Premium Local Shopping,
+            Curated China-Imported
             <span className="block text-brand-red drop-shadow-md">
-              Reimagined for You.
+              Products for Modern Buyers.
             </span>
           </h1>
 
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/90 sm:text-base">
-            PixoHouse connects you with verified local stores within 50km, bringing real-time deals,
-            handpicked products, and a seamless shopping experience to your doorstep.
+            PixoHouse brings carefully selected China-imported products to your
+            doorstep with a focus on quality, trendy collections, fair pricing,
+            and a smooth online shopping experience.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -37,9 +38,10 @@ export default function AboutHero() {
               href="/products"
               className="group inline-flex items-center gap-2 rounded-full bg-brand-red px-5 py-2.5 text-sm font-bold text-brand-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-lg"
             >
-              Shop Now
+              Explore Products
               <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
+
             <Link
               href="/contact"
               className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-bold text-white ring-1 ring-white/30 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/20"
@@ -50,24 +52,27 @@ export default function AboutHero() {
         </div>
 
         {/* Right floating card */}
-        <div className="relative hidden lg:flex justify-center">
-          <div className="relative w-full max-w-sm rounded-3xl bg-white/15 p-6 backdrop-blur-md ring-1 ring-white/20 shadow-2xl">
+        <div className="relative hidden justify-center lg:flex">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white/15 p-6 shadow-2xl backdrop-blur-md ring-1 ring-white/20">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-white text-brand-red shadow-lg">
-                <MapPin className="h-6 w-6" />
+                <PackageCheck className="h-6 w-6" />
               </div>
+
               <div>
-                <p className="text-sm font-bold">PixoHouse Marketplace</p>
-                <p className="text-xs text-white/80">Trusted by 50,000+ shoppers</p>
+                <p className="text-sm font-bold">PixoHouse Imported Collection</p>
+                <p className="text-xs text-white/80">
+                  Trendy products selected with care
+                </p>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               {[
-                { k: "10K+", v: "Products" },
-                { k: "500+", v: "Local Stores" },
-                { k: "50KM", v: "Delivery Range" },
-                { k: "4.8★", v: "Customer Rating" },
+                { k: "CN", v: "China Imported" },
+                { k: "QC", v: "Quality Checked" },
+                { k: "New", v: "Trending Items" },
+                { k: "Fast", v: "Smooth Delivery" },
               ].map((item) => (
                 <div
                   key={item.v}

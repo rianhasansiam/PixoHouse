@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { isAdminRequest, requireAdmin } from "@/lib/api/guards";
 import { jsonError, created, ok } from "@/lib/api/response";
+import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
   createProduct,
   listProducts,
@@ -92,6 +93,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const product = await createProduct(parsed.data);
+    await logAdminActivity({
+      kind: "product",
+      action: "created",
+      target: product.name,
+      targetId: product.id,
+      href: "/admin/products",
+      actor: guard.session.user,
+    });
     // No dedicated "products" cache exists; the catalog read is uncached.
     // Bust the cached surfaces that embed product data.
     revalidateTag("home-categories", "max");

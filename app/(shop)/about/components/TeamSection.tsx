@@ -6,22 +6,16 @@ import { Users } from "lucide-react";
 const team = [
   {
     name: "Rian Hasan Siam",
-    role: "Head Of IT",
+    role: "Founder & CTO",
     image:
       "/images/RianDP.png",
   },
   {
-    name: "Md Moniruzzaman",
-    role: "CEO",
+    name: "Md Nafiz Islam Nayan",
+    role: "Co-Founder & CEO",
     image:
-      "/images/raju.jpg",
-  },
-  {
-    name: "Imtiaj Ahmed",
-    role: "Co Founder",
-    image:
-      "/images/imtiaj.jpg",
-  },
+      "/images/nayan.jpg",
+  }
 ];
 
 export default function TeamSection() {
@@ -46,7 +40,7 @@ export default function TeamSection() {
 
       <div className="h-0.5 w-full bg-brand-border rounded-full mb-8" />
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-5">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-5">
         {team.map((member) => (
           <div
             key={member.name}

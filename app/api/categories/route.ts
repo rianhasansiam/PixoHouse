@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requireAdmin } from "@/lib/api/guards";
 import { created, jsonError, ok } from "@/lib/api/response";
+import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
   createCategory,
   listCategoriesCached,
@@ -71,6 +72,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const category = await createCategory(parsed.data);
+    await logAdminActivity({
+      kind: "category",
+      action: "Category created",
+      target: category.name,
+      targetId: category.id,
+      href: "/admin/categories",
+      actor: guard.session.user,
+    });
     revalidateTag("categories", "max");
     revalidateTag("home-categories", "max");
     return created(category);
