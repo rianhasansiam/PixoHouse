@@ -56,7 +56,7 @@ export default function ProductCostCard({
           </div>
           <div className="rounded-xl border border-brand-border bg-brand-light-bg p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-              Products in stock
+              Catalog products
             </p>
             <p className="mt-1 text-lg font-extrabold text-brand-black">
               {(productCost?.productCount ?? 0).toLocaleString()}
@@ -76,7 +76,8 @@ export default function ProductCostCard({
       <p className="mt-4 flex items-start gap-2 rounded-xl bg-brand-light-bg p-3 text-[11px] text-gray-600">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-red" />
         Buying price is admin-only and never exposed to customers. This figure
-        reflects capital currently tied up in inventory.
+        reflects capital currently tied up in inventory; zero-stock products
+        are counted as catalog products but add no inventory cost.
       </p>
     </div>
   );

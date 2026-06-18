@@ -319,7 +319,9 @@ export async function addCapital(
 /**
  * Derive capital tied up in inventory: for each product,
  * `buyingPrice × (sum of its variant stock)`. Purely informational — no
- * writes, and never persisted into this feature's tables.
+ * writes, and never persisted into this feature's tables. `productCount`
+ * reports the full catalog count; zero-stock products still count as
+ * products even though they contribute no units or inventory cost.
  */
 export async function getProductCost(): Promise<ProductCostSummary> {
   const products = await prisma.product.findMany({
@@ -331,7 +333,6 @@ export async function getProductCost(): Promise<ProductCostSummary> {
 
   let totalCost = toDecimal(0);
   let totalUnits = 0;
-  let productCount = 0;
 
   for (const product of products) {
     const units = product.variants.reduce(
@@ -342,12 +343,11 @@ export async function getProductCost(): Promise<ProductCostSummary> {
 
     totalCost = totalCost.plus(multiply(product.buyingPrice, units));
     totalUnits += units;
-    productCount += 1;
   }
 
   return {
     totalProductCost: round2(totalCost),
-    productCount,
+    productCount: products.length,
     totalUnits,
   };
 }

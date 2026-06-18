@@ -49,7 +49,6 @@ export default function AdminProductsPage() {
   const dispatch = useDispatch<AppDispatch>();
   const products = useSelector((state: RootState) => state.adminProducts.items);
   const isLoading = useSelector((state: RootState) => state.adminProducts.isLoading);
-  const isHydrated = useSelector((state: RootState) => state.adminProducts.isHydrated);
   const error = useSelector((state: RootState) => state.adminProducts.error);
 
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -85,9 +84,8 @@ export default function AdminProductsPage() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isHydrated) return;
     void refreshProducts();
-  }, [isHydrated, refreshProducts]);
+  }, [refreshProducts]);
 
   useEffect(() => {
     let ignore = false;

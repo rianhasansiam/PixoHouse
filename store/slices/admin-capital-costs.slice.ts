@@ -3,6 +3,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type {
   ActivityRow,
   CapitalRecord,
+  CapitalCostSummary,
   OtherCostRow,
   ProductCostSummary,
 } from "@/features/admin-capital-costs/api";
@@ -17,6 +18,7 @@ import type {
 type AdminCapitalCostsState = {
   capital: CapitalRecord | null;
   productCost: ProductCostSummary | null;
+  summary: CapitalCostSummary | null;
   otherCosts: OtherCostRow[];
   activity: ActivityRow[];
   isHydrated: boolean;
@@ -27,6 +29,7 @@ type AdminCapitalCostsState = {
 const initialState: AdminCapitalCostsState = {
   capital: null,
   productCost: null,
+  summary: null,
   otherCosts: [],
   activity: [],
   isHydrated: false,
@@ -43,12 +46,14 @@ const adminCapitalCostsSlice = createSlice({
       action: PayloadAction<{
         capital: CapitalRecord | null;
         productCost: ProductCostSummary | null;
+        summary: CapitalCostSummary | null;
         otherCosts: OtherCostRow[];
         activity: ActivityRow[];
       }>,
     ) {
       state.capital = action.payload.capital;
       state.productCost = action.payload.productCost;
+      state.summary = action.payload.summary;
       state.otherCosts = action.payload.otherCosts;
       state.activity = action.payload.activity;
       state.isHydrated = true;
@@ -56,6 +61,12 @@ const adminCapitalCostsSlice = createSlice({
     },
     setCapital(state, action: PayloadAction<CapitalRecord | null>) {
       state.capital = action.payload;
+    },
+    setCapitalCostSummary(
+      state,
+      action: PayloadAction<CapitalCostSummary | null>,
+    ) {
+      state.summary = action.payload;
     },
     setActivity(state, action: PayloadAction<ActivityRow[]>) {
       state.activity = action.payload;
@@ -90,6 +101,7 @@ const adminCapitalCostsSlice = createSlice({
 export const {
   setCapitalCostOverview,
   setCapital,
+  setCapitalCostSummary,
   setActivity,
   setOtherCosts,
   upsertOtherCost,

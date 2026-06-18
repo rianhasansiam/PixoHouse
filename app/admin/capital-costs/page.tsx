@@ -8,6 +8,7 @@ import {
   removeOtherCost,
   setActivity,
   setCapital,
+  setCapitalCostSummary,
   setCapitalCostOverview,
   setCapitalCostsError,
   setCapitalCostsLoading,
@@ -29,7 +30,6 @@ import {
   parsePositiveAmount,
   addCapital,
   updateOtherCost,
-  type CapitalCostSummary,
   type CapitalFormState,
   type OtherCostFilters as Filters,
   type OtherCostFormState,
@@ -58,6 +58,7 @@ export default function AdminCapitalCostsPage() {
   const productCost = useSelector(
     (s: RootState) => s.adminCapitalCosts.productCost,
   );
+  const summary = useSelector((s: RootState) => s.adminCapitalCosts.summary);
   const otherCosts = useSelector(
     (s: RootState) => s.adminCapitalCosts.otherCosts,
   );
@@ -69,8 +70,6 @@ export default function AdminCapitalCostsPage() {
   );
   const isLoading = useSelector((s: RootState) => s.adminCapitalCosts.isLoading);
   const error = useSelector((s: RootState) => s.adminCapitalCosts.error);
-
-  const [summary, setSummary] = useState<CapitalCostSummary | null>(null);
 
   // Capital form
   const [capitalForm, setCapitalForm] =
@@ -117,11 +116,11 @@ export default function AdminCapitalCostsPage() {
         setCapitalCostOverview({
           capital: overview.capital,
           productCost: overview.productCost,
+          summary: overview.summary,
           otherCosts: overview.otherCosts.items,
           activity: overview.activity,
         }),
       );
-      setSummary(overview.summary);
       setCapitalForm(EMPTY_CAPITAL_FORM);
       setFilteredTotal(overview.otherCosts.total);
       setFilterActive(false);
@@ -138,12 +137,11 @@ export default function AdminCapitalCostsPage() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isHydrated) return;
     const timer = window.setTimeout(() => {
       void refresh();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [isHydrated, refresh]);
+  }, [refresh]);
 
   /**
    * Pull fresh summary/cards + capital without clobbering a filtered
@@ -152,7 +150,7 @@ export default function AdminCapitalCostsPage() {
   const syncSummary = useCallback(async () => {
     try {
       const overview = await fetchCapitalCostOverview();
-      setSummary(overview.summary);
+      dispatch(setCapitalCostSummary(overview.summary));
       dispatch(setCapital(overview.capital));
       dispatch(setActivity(overview.activity));
       if (!filterActive) {

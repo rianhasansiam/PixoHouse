@@ -83,6 +83,8 @@ export default function CapitalCostSummaryCards({
         hint="Capital input by admin"
         loading={loading}
       />
+
+
       <SummaryCard
         icon={<Boxes className="h-4 w-4" />}
         label="Product Costs"
@@ -94,6 +96,8 @@ export default function CapitalCostSummaryCards({
         }
         loading={loading}
       />
+
+
       <SummaryCard
         icon={<Receipt className="h-4 w-4" />}
         label="Other Costs"
