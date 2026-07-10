@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     revalidateTag("admin-orders", "max");
     revalidateTag("home-categories", "max");
     revalidateTag("categories", "max");
+    revalidateTag("promo-codes", "max");
     return created(result);
   } catch (error) {
     return handleServiceError("checkout.POST", error);

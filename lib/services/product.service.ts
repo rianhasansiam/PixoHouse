@@ -288,10 +288,10 @@ export function getActiveProductBySlug(slug: string) {
   });
 }
 
-/** Resolve just the slug for a product id (used for id -> slug redirects). */
+/** Resolve just the slug for a public product id (used for id -> slug redirects). */
 export async function getProductSlugById(id: string): Promise<string | null> {
-  const row = await prisma.product.findUnique({
-    where: { id },
+  const row = await prisma.product.findFirst({
+    where: { id, status: "ACTIVE" },
     select: { slug: true },
   });
   return row?.slug ?? null;

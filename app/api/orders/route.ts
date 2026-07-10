@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     revalidateTag("admin-orders", "max");
     revalidateTag("home-categories", "max");
     revalidateTag("categories", "max");
+    revalidateTag("promo-codes", "max");
     return created(result.order);
   } catch (error) {
     return handleServiceError("orders.POST", error);

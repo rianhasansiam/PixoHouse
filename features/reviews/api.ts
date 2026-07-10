@@ -13,7 +13,6 @@ export type ReviewSource = "CUSTOMER" | "ADMIN";
 export type Review = {
   id: string;
   productId: string;
-  userId: string | null;
   authorName: string;
   authorImage: string | null;
   rating: number;

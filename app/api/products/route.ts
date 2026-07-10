@@ -25,7 +25,6 @@ import {createProductSchema, productQuerySchema,} from "@/lib/validations/produc
 
 
 export async function GET(request: NextRequest) {
-
   const params = Object.fromEntries(request.nextUrl.searchParams);
   const parsed = productQuerySchema.safeParse(params);
 
@@ -36,9 +35,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { items, meta } = await listProducts(parsed.data);
     // Reveal admin-only fields (buyingPrice) only to signed-in admins.
     const includeBuyingPrice = await isAdminRequest();
+    // Anonymous/public callers can only list visible products. Admin callers
+    // keep the full status filter behavior used by the product dashboard.
+    const query = includeBuyingPrice
+      ? parsed.data
+      : { ...parsed.data, status: "ACTIVE" as const };
+    const { items, meta } = await listProducts(query);
     return ok(
       items.map((item: ProductWithCategory) =>
         serializeProduct(item, { includeBuyingPrice }),

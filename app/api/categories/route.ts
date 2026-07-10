@@ -3,7 +3,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
-import { requireAdmin } from "@/lib/api/guards";
+import { isAdminRequest, requireAdmin } from "@/lib/api/guards";
 import { created, jsonError, ok } from "@/lib/api/response";
 import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
@@ -33,7 +33,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { items, meta } = await listCategoriesCached(parsed.data);
+    const isAdmin = await isAdminRequest();
+    // Public callers should never discover inactive categories through the
+    // reusable category endpoint. Admin callers keep full dashboard access.
+    const query = isAdmin
+      ? parsed.data
+      : { ...parsed.data, status: "ACTIVE" as const };
+    const { items, meta } = await listCategoriesCached(query);
     return ok(items, meta);
   } catch (error) {
     console.error("[categories.GET] failed", error);

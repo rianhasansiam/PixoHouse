@@ -263,9 +263,11 @@ async function priceLines(items: ResolvedItem[]): Promise<PricedLine[]> {
 type PromoApplication =
   | {
       ok: true;
+      id: string;
       code: string;
       description: string | null;
       discount: Prisma.Decimal;
+      usageLimit: number | null;
     }
   | {
       ok: false;
@@ -318,9 +320,11 @@ async function applyPromoCode(
 
   return {
     ok: true,
+    id: promo.id,
     code,
     description: promo.description,
     discount,
+    usageLimit: promo.usageLimit,
   };
 }
 
@@ -381,9 +385,11 @@ function summarize(
   const discount = promo?.ok ? promo.discount : toDecimal(0);
   const afterDiscount = subtractClamped(subtotal, discount);
 
+  const freeShippingThreshold = toDecimal(settings.freeShippingThreshold);
   const isFreeShipping =
     subtotal.isZero() ||
-    greaterThanOrEqual(afterDiscount, settings.freeShippingThreshold);
+    (freeShippingThreshold.greaterThan(0) &&
+      greaterThanOrEqual(afterDiscount, freeShippingThreshold));
   const shipping = isFreeShipping
     ? toDecimal(0)
     : toDecimal(settings.standardShippingFee);
@@ -596,9 +602,31 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
 
       // Bump usedCount when a real promo was applied.
       if (promo?.ok) {
-        await tx.promoCode.updateMany({
-          where: { code: promo.code },
+        const promoUpdate = await tx.promoCode.updateMany({
+          where:
+            promo.usageLimit == null
+              ? { id: promo.id, status: "ACTIVE", usageLimit: null }
+              : {
+                  id: promo.id,
+                  status: "ACTIVE",
+                  usageLimit: promo.usageLimit,
+                  usedCount: { lt: promo.usageLimit },
+                },
           data: { usedCount: { increment: 1 } },
+        });
+        if (promoUpdate.count !== 1) {
+          throw new CheckoutError(
+            409,
+            "This promo code is no longer available. Please review your order and try again.",
+          );
+        }
+
+        await tx.promoCodeUsage.create({
+          data: {
+            promoCodeId: promo.id,
+            userId,
+            orderId: order.id,
+          },
         });
       }
 

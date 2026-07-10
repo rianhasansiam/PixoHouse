@@ -19,14 +19,14 @@ export type LoadedImage = { dataUrl: string; width: number; height: number };
 
 /** Brand + UI palette (mirrors the on-screen theme). */
 export const PDF_COLORS = {
-  primary: [109, 40, 217] as RGB, // #6D28D9
-  primaryDark: [76, 29, 149] as RGB, // #4C1D95
-  primarySoft: [237, 233, 254] as RGB, // violet-100
-  bg: [249, 250, 251] as RGB, // #F9FAFB
+  primary: [225, 6, 0] as RGB, // Brand_Red #E10600
+  primaryDark: [184, 0, 0] as RGB, // Brand_Red_Hover #B80000
+  primarySoft: [248, 248, 248] as RGB, // Brand_Light_Bg #F8F8F8
+  bg: [248, 248, 248] as RGB, // Brand_Light_Bg #F8F8F8
   card: [255, 255, 255] as RGB, // #FFFFFF
-  border: [229, 231, 235] as RGB, // #E5E7EB
-  text: [17, 24, 39] as RGB, // #111827
-  muted: [107, 114, 128] as RGB, // #6B7280
+  border: [229, 231, 235] as RGB, // Brand_Border #E5E7EB
+  text: [17, 17, 17] as RGB, // Brand_Text_Dark #111111
+  muted: [107, 114, 128] as RGB, // Brand_Text_Muted #6B7280
   warnBg: [254, 243, 199] as RGB, // #FEF3C7
   warnText: [146, 64, 14] as RGB, // #92400E
   successBg: [220, 252, 231] as RGB, // #DCFCE7
@@ -36,7 +36,7 @@ export const PDF_COLORS = {
   neutralBg: [243, 244, 246] as RGB, // gray-100 (safe fallback)
   neutralText: [55, 65, 81] as RGB, // gray-700
   white: [255, 255, 255] as RGB,
-  zebra: [249, 250, 251] as RGB, // alt row tint
+  zebra: [248, 248, 248] as RGB, // alt row tint
 };
 
 export const PAGE_MARGIN = 14;
@@ -77,7 +77,6 @@ export function formatBDT(value: number): string {
 /** Strip control characters and trim; fall back when empty/missing. */
 export function safeText(value: string | null | undefined, fallback = ""): string {
   if (value == null) return fallback;
-  // eslint-disable-next-line no-control-regex
   const cleaned = String(value).replace(/[\u0000-\u001F\u007F]/g, " ").trim();
   return cleaned.length > 0 ? cleaned : fallback;
 }
@@ -290,7 +289,7 @@ export type BrandHeaderOptions = {
   generatedAt?: string;
 };
 
-/** Draws the shared purple brand band (logo chip + pill + timestamp). */
+/** Draws the shared brand band (logo chip + pill + timestamp). */
 export function drawBrandHeader(doc: Doc, opts: BrandHeaderOptions): void {
   const { logo, subtitle } = opts;
   const pw = doc.internal.pageSize.getWidth();
@@ -300,8 +299,8 @@ export function drawBrandHeader(doc: Doc, opts: BrandHeaderOptions): void {
   doc.setFillColor(...PDF_COLORS.primaryDark);
   doc.rect(0, HEADER_HEIGHT - 2, pw, 2, "F");
 
-  // Brand block: logo on a white chip (so any logo colour stays legible
-  // on the purple band), falling back to the wordmark if it won't load.
+  // Brand block: logo on a white chip so any logo colour stays legible
+  // on the brand band, falling back to the wordmark if it won't load.
   if (logo) {
     const maxH = 12;
     const maxW = 52;

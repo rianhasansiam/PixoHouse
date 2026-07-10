@@ -162,7 +162,7 @@ export default function OrderSummaryCard({
             <SummaryRow
               label="Shipping"
               value={summary.shipping}
-              freeLabel={summary.isFreeShippingApplied ? "FREE" : undefined}
+              freeLabel={summary.shipping === 0 ? "FREE" : undefined}
             />
             <SummaryRow
               label={`Tax (${Math.round(summary.taxRate * 100)}%)`}

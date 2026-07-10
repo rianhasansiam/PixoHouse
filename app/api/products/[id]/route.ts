@@ -30,6 +30,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const product = await getProductById(id);
     if (!product) return jsonError(404, "Product not found.");
     const includeBuyingPrice = await isAdminRequest();
+    if (!includeBuyingPrice && product.status !== "ACTIVE") {
+      return jsonError(404, "Product not found.");
+    }
     return ok(serializeProduct(product, { includeBuyingPrice }));
   } catch (error) {
     console.error("[products/[id].GET] failed", error);

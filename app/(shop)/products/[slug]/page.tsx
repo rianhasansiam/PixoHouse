@@ -7,7 +7,6 @@ import {
 } from "@/lib/services/banner.service";
 import {
   getActiveProductBySlug,
-  getProductBySlug,
   getProductSlugById,
   listProducts,
   type ProductWithCategory,
@@ -95,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailsPage({ params }: Props) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getActiveProductBySlug(slug);
 
   // Backward compatibility: older links (cart, wishlist, orders, shared
   // URLs) reference a product by its cuid id. If the slug lookup misses,

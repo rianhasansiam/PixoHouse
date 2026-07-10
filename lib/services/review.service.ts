@@ -47,7 +47,6 @@ type AdminReviewWithRelations = Prisma.ReviewGetPayload<{
 export type SerializedReview = {
   id: string;
   productId: string;
-  userId: string | null;
   authorName: string;
   authorImage: string | null;
   rating: number;
@@ -66,6 +65,7 @@ export type SerializedReview = {
  * admin-guarded endpoints.
  */
 export type AdminSerializedReview = SerializedReview & {
+  userId: string | null;
   authorPhone: string | null;
   authorEmail: string | null;
 };
@@ -75,7 +75,6 @@ export function serializeReview(review: ReviewWithRelations): SerializedReview {
   return {
     id: review.id,
     productId: review.productId,
-    userId: review.userId,
     authorName: review.authorName,
     authorImage: review.user?.image ?? null,
     rating: review.rating,
@@ -102,6 +101,7 @@ function serializeAdminReview(
 ): AdminSerializedReview {
   return {
     ...serializeReview(review),
+    userId: review.userId,
     authorPhone: review.user?.phone ?? null,
     authorEmail: review.user?.email ?? null,
   };

@@ -3,7 +3,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
-import { requireAdmin } from "@/lib/api/guards";
+import { isAdminRequest, requireAdmin } from "@/lib/api/guards";
 import { jsonError, ok } from "@/lib/api/response";
 import { logAdminActivity } from "@/lib/services/admin-activity.service";
 import {
@@ -22,6 +22,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const category = await getCategoryById(id);
     if (!category) return jsonError(404, "Category not found.");
+    const isAdmin = await isAdminRequest();
+    if (!isAdmin && category.status !== "ACTIVE") {
+      return jsonError(404, "Category not found.");
+    }
     return ok(category);
   } catch (error) {
     console.error("[categories/[id].GET] failed", error);
