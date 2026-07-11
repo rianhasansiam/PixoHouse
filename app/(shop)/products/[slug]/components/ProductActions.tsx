@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingCart, Zap, Ruler } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -217,17 +217,17 @@ const ProductActions = ({
 
   const selectedVariant = resolveVariant(selectedColor, selectedSize);
 
-  useEffect(() => {
+  const notifyVariantImageChange = useCallback((variant: ProductVariantOption | null) => {
     window.dispatchEvent(
       new CustomEvent(PRODUCT_VARIANT_IMAGE_EVENT, {
         detail: {
           productId,
-          variantId: selectedVariant?.id ?? null,
-          image: selectedVariant?.image ?? null,
+          variantId: variant?.id ?? null,
+          image: variant?.image ?? null,
         },
       }),
     );
-  }, [productId, selectedVariant?.id, selectedVariant?.image]);
+  }, [productId]);
 
   /** Which sizes are available for the currently-selected color? */
   const sizesForColor = useMemo(() => {
@@ -263,6 +263,7 @@ const ProductActions = ({
   /* ---------- handlers -------------------------------------------- */
 
   const handleSelectColor = (color: string) => {
+    let nextSize = selectedSize;
     setSelectedColor(color);
     // If the current size isn't available in the new color, pick the first
     // available size for that color.
@@ -273,13 +274,16 @@ const ProductActions = ({
       }
       if (!sizesAvailable.has(selectedSize)) {
         const fallback = uniqueSizes.find((s) => sizesAvailable.has(s));
-        setSelectedSize(fallback ?? null);
+        nextSize = fallback ?? null;
+        setSelectedSize(nextSize);
       }
     }
     setQuantity(1);
+    notifyVariantImageChange(resolveVariant(color, nextSize));
   };
 
   const handleSelectSize = (size: string) => {
+    let nextColor = selectedColor;
     setSelectedSize(size);
     // If the current color isn't available in the new size, pick the first
     // available color for that size.
@@ -290,10 +294,12 @@ const ProductActions = ({
       }
       if (!colorsAvailable.has(selectedColor)) {
         const fallback = uniqueColors.find((c) => colorsAvailable.has(c));
-        setSelectedColor(fallback ?? null);
+        nextColor = fallback ?? null;
+        setSelectedColor(nextColor);
       }
     }
     setQuantity(1);
+    notifyVariantImageChange(resolveVariant(nextColor, size));
   };
 
   const handleQuantityChange = (delta: number) => {
@@ -541,6 +547,7 @@ const ProductActions = ({
                     setSelectedColor(variant.color);
                     setSelectedSize(variant.size);
                     setQuantity(1);
+                    notifyVariantImageChange(variant);
                   }}
                   disabled={isOut}
                   className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${

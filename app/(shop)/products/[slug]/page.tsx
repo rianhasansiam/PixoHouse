@@ -234,7 +234,9 @@ export default async function ProductDetailsPage({ params }: Props) {
               productId={product.id}
               images={productImageUrls}
               variantImages={variantGalleryImages}
-              initialVariantId={initialVariant?.id ?? null}
+              initialVariantId={
+                productImageUrls.length === 0 ? initialVariant?.id ?? null : null
+              }
               productName={product.name}
             />
           </div>
