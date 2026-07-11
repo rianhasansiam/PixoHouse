@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingCart, Zap, Ruler } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -27,6 +27,7 @@ import { toast } from "@/lib/feedback";
 
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
+const PRODUCT_VARIANT_IMAGE_EVENT = "pixohouse:product-variant-image";
 
 const HEX_VALUE = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
@@ -41,6 +42,7 @@ export type ProductVariantOption = {
   color: string | null;
   size: string | null;
   stock: number;
+  image: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -215,6 +217,18 @@ const ProductActions = ({
 
   const selectedVariant = resolveVariant(selectedColor, selectedSize);
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(PRODUCT_VARIANT_IMAGE_EVENT, {
+        detail: {
+          productId,
+          variantId: selectedVariant?.id ?? null,
+          image: selectedVariant?.image ?? null,
+        },
+      }),
+    );
+  }, [productId, selectedVariant?.id, selectedVariant?.image]);
+
   /** Which sizes are available for the currently-selected color? */
   const sizesForColor = useMemo(() => {
     if (!hasColors || !selectedColor) return new Set(uniqueSizes);
@@ -320,7 +334,7 @@ const ProductActions = ({
       color: selectedVariant.color,
       size: selectedVariant.size,
       name: productName,
-      image: image ?? FALLBACK_PRODUCT_IMAGE,
+      image: selectedVariant.image ?? image ?? FALLBACK_PRODUCT_IMAGE,
       quantity,
       unitPrice,
       originalPrice: currentListPrice,

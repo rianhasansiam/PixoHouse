@@ -58,6 +58,13 @@ function discountPercent(price: number, originalPrice: number) {
   return Math.round(((originalPrice - price) / originalPrice) * 100);
 }
 
+function variantImageLabel(variant: ProductVariant) {
+  const parts = [variant.color, variant.size].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+  return parts.length > 0 ? parts.join(" / ") : variant.sku ?? undefined;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   // Only ACTIVE products get rich, indexable metadata. Inactive or
@@ -145,10 +152,30 @@ export default async function ProductDetailsPage({ params }: Props) {
   const recentProducts = others.slice(0, 6).map(toCard);
   const relatedProducts = others.slice(0, 16).map(toCard);
 
-  const galleryImages =
-    product.images.length > 0
-      ? product.images.map((img: ProductImage) => img.url)
-      : [FALLBACK_PRODUCT_IMAGE];
+  const productImageUrls = product.images.map((img: ProductImage) => img.url);
+  const variantGalleryImages = product.variants
+    .map((variant: ProductVariant) => ({
+      variantId: variant.id,
+      url: variant.image,
+      label: variantImageLabel(variant),
+    }))
+    .filter(
+      (
+        item,
+      ): item is {
+        variantId: string;
+        url: string;
+        label: string | undefined;
+      } => typeof item.url === "string" && item.url.trim().length > 0,
+    );
+  const primaryDisplayImage =
+    productImageUrls[0] ??
+    variantGalleryImages[0]?.url ??
+    FALLBACK_PRODUCT_IMAGE;
+  const initialVariant =
+    product.variants.find((variant: ProductVariant) => variant.stock > 0) ??
+    product.variants[0] ??
+    null;
 
   const breadcrumbItems = [
     {
@@ -169,9 +196,11 @@ export default async function ProductDetailsPage({ params }: Props) {
         name: product.name,
         description: product.description,
         images:
-          product.images.length > 0
-            ? product.images.map((img: ProductImage) => img.url)
-            : [FALLBACK_PRODUCT_IMAGE],
+          productImageUrls.length > 0
+            ? productImageUrls
+            : variantGalleryImages.length > 0
+              ? variantGalleryImages.map((item) => item.url)
+              : [FALLBACK_PRODUCT_IMAGE],
         path: `/products/${product.slug}`,
         price: effectivePrice(product),
         inStock: product.variants.some((v: ProductVariant) => v.stock > 0),
@@ -201,9 +230,13 @@ export default async function ProductDetailsPage({ params }: Props) {
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-6 lg:col-span-4">
-            <ProductGallery images={galleryImages} productName={product.name} />
-
-           
+            <ProductGallery
+              productId={product.id}
+              images={productImageUrls}
+              variantImages={variantGalleryImages}
+              initialVariantId={initialVariant?.id ?? null}
+              productName={product.name}
+            />
           </div>
 
           <div className="md:col-span-6 lg:col-span-5">
@@ -211,14 +244,13 @@ export default async function ProductDetailsPage({ params }: Props) {
               <ProductInfo
                 name={product.name}
                 specs={[]}
-            
                 productCode={product.productCode}
               />
 
               <ProductActions
                 productId={product.id}
                 productName={product.name}
-                image={galleryImages[0]}
+                image={primaryDisplayImage}
                 salePrice={product.salePrice.toNumber()}
                 discountPrice={
                   product.discountPrice != null
@@ -231,6 +263,7 @@ export default async function ProductDetailsPage({ params }: Props) {
                   color: v.color,
                   size: v.size,
                   stock: v.stock,
+                  image: v.image,
                 }))}
               />
             </div>
