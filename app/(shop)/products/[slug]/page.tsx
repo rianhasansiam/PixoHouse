@@ -153,6 +153,9 @@ export default async function ProductDetailsPage({ params }: Props) {
   const relatedProducts = others.slice(0, 16).map(toCard);
 
   const productImageUrls = product.images.map((img: ProductImage) => img.url);
+
+  
+
   const variantGalleryImages = product.variants
     .map((variant: ProductVariant) => ({
       variantId: variant.id,
