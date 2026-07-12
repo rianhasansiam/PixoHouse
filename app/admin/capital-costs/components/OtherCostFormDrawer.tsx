@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import type React from "react";
 
 import type { OtherCostFormState } from "@/features/admin-capital-costs/api";
+import { ButtonLoader } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 import Field from "@/app/admin/components/Field";
@@ -126,10 +127,16 @@ export default function OtherCostFormDrawer({
                 <button
                   type="submit"
                   disabled={isSubmitting}
+                  aria-busy={isSubmitting}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {mode === "create" ? "Add cost" : "Save changes"}
+                  {isSubmitting ? (
+                    <ButtonLoader label={mode === "create" ? "Adding..." : "Saving..."} />
+                  ) : mode === "create" ? (
+                    "Add cost"
+                  ) : (
+                    "Save changes"
+                  )}
                 </button>
               </div>
             </div>

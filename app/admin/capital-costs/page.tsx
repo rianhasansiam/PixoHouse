@@ -15,6 +15,7 @@ import {
   setOtherCosts,
   upsertOtherCost,
 } from "@/store/slices/admin-capital-costs.slice";
+import { LoadingSpinner } from "@/components/ui/loading";
 import type { AppDispatch, RootState } from "@/store";
 import {
   buildOtherCostForm,
@@ -364,9 +365,14 @@ export default function AdminCapitalCostsPage() {
           type="button"
           onClick={() => void refresh()}
           disabled={isLoading}
+          aria-busy={isLoading}
           className="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-border bg-white px-3 text-xs font-bold text-brand-red shadow-sm transition-all duration-200 hover:border-brand-red hover:bg-brand-light-bg disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RotateCcw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          {isLoading ? (
+            <LoadingSpinner decorative size="sm" />
+          ) : (
+            <RotateCcw className="h-3.5 w-3.5" />
+          )}
           {isLoading ? "Refreshing..." : "Refresh"}
         </button>
       </div>

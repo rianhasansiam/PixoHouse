@@ -34,6 +34,7 @@ import type { AppDispatch, RootState } from "@/store";
 import ColorBadge from "@/components/ui/ColorBadge";
 import { toast } from "@/lib/feedback";
 import { useAnimatedRemoval } from "@/hooks/useAnimatedRemoval";
+import { SectionLoader } from "@/components/ui/loading";
 import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
@@ -237,9 +238,7 @@ export default function CartTab() {
       )}
 
       {isLoading && items.length === 0 ? (
-        <div className="rounded-2xl border border-brand-border bg-brand-white p-6 text-center text-sm text-brand-text-muted shadow-sm sm:rounded-3xl sm:p-10">
-          Loading cart...
-        </div>
+        <SectionLoader title="Loading cart" rows={4} />
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-brand-border bg-brand-white p-6 text-center shadow-sm sm:rounded-3xl sm:p-10">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-light-bg text-brand-black">

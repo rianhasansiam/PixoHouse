@@ -18,6 +18,7 @@ import { FIELD_LIMITS, meetsPasswordPolicy } from "@/lib/auth/policy";
 
 import FloatField from "@/app/(auth)/_components/FloatField";
 import PasswordVisibilityButton from "@/app/(auth)/_components/PasswordVisibilityButton";
+import { ButtonLoader } from "@/components/ui/loading";
 
 type SecurityTabProps = {
   user: ProfileUser;
@@ -234,14 +235,17 @@ export default function SecurityTab({ user }: SecurityTabProps) {
             <button
               type="submit"
               disabled={!canSubmit}
+              aria-busy={submitState.status === "saving"}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-5 text-sm font-bold text-brand-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:translate-y-0 sm:w-auto"
             >
-              <KeyRound className="h-4 w-4" />
-              {submitState.status === "saving"
-                ? "Saving..."
-                : hasPassword
-                  ? "Update password"
-                  : "Set password"}
+              {submitState.status === "saving" ? (
+                <ButtonLoader label="Saving..." />
+              ) : (
+                <>
+                  <KeyRound className="h-4 w-4" />
+                  {hasPassword ? "Update password" : "Set password"}
+                </>
+              )}
             </button>
           </div>
         </form>

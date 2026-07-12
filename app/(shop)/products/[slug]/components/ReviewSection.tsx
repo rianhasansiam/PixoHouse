@@ -7,11 +7,11 @@ import {
   CheckCircle,
   Filter,
   ChevronDown,
-  Loader2,
   PenLine,
   X,
 } from 'lucide-react'
 import { toast } from '@/lib/feedback'
+import { ButtonLoader, SectionLoader } from '@/components/ui/loading'
 
 import {
   createReview,
@@ -218,12 +218,7 @@ export default function ReviewSection({ productId }: { productId: string }) {
 
       {/* States */}
       {loading ? (
-        <div className="rounded-xl border border-brand-border bg-white p-10 text-center text-sm text-brand-text-muted">
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Loading reviews...
-          </span>
-        </div>
+        <SectionLoader title="Loading reviews" rows={5} />
       ) : loadError ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-700">
           {loadError}
@@ -420,10 +415,10 @@ function WriteReviewForm({
         <button
           type="submit"
           disabled={submitting}
+          aria-busy={submitting}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-red text-brand-white text-sm font-medium rounded-xl hover:bg-brand-red-hover transition-all shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          Submit review
+          {submitting ? <ButtonLoader label="Submitting..." /> : 'Submit review'}
         </button>
       </div>
     </form>

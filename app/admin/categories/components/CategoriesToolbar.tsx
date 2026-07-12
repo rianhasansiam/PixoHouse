@@ -2,6 +2,7 @@
 
 import { Plus, RotateCcw, Search } from "lucide-react";
 
+import { LoadingSpinner } from "@/components/ui/loading";
 import {
   STATUS_VALUES,
   type CategoryStatus,
@@ -63,10 +64,16 @@ export default function CategoriesToolbar({
           <button
             type="button"
             onClick={onRefresh}
+            disabled={isLoading}
+            aria-busy={isLoading}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-border px-3 text-sm font-semibold text-brand-black transition hover:bg-brand-light-bg"
           >
-            <RotateCcw className="h-4 w-4" />
-            Refresh
+            {isLoading ? (
+              <LoadingSpinner decorative size="sm" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            {isLoading ? "Refreshing..." : "Refresh"}
           </button>
 
           <button
@@ -84,7 +91,12 @@ export default function CategoriesToolbar({
         <span>
           {visibleCount} / {totalCount} categories
         </span>
-        {isLoading && <span>Syncing categories...</span>}
+        {isLoading && (
+          <span className="inline-flex items-center gap-1.5">
+            <LoadingSpinner decorative size="xs" />
+            Syncing categories...
+          </span>
+        )}
       </div>
     </div>
   );

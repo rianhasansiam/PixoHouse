@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingCart, Zap, Ruler } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -24,6 +24,7 @@ import {
 } from "@/features/cart/storage";
 import type { CartItem } from "@/features/cart/api";
 import { toast } from "@/lib/feedback";
+import { ButtonLoader } from "@/components/ui/loading";
 
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400";
@@ -193,6 +194,7 @@ const ProductActions = ({
   );
   const [quantity, setQuantity] = useState(1);
   const [isCartBusy, setIsCartBusy] = useState(false);
+  const [isBuyNowPending, startBuyNowTransition] = useTransition();
 
   /* ---------- resolve variant from color + size ------------------- */
 
@@ -356,15 +358,17 @@ const ProductActions = ({
   };
 
   const handleBuyNow = () => {
-    if (!inStock || !selectedVariant) return;
+    if (!inStock || !selectedVariant || isBuyNowPending) return;
     const target = `/checkout?buy=${encodeURIComponent(
       `${productId}:${quantity}:${selectedVariant.id}`,
     )}`;
-    if (status !== "authenticated") {
-      router.push(`/login?callbackUrl=${encodeURIComponent(target)}`);
-      return;
-    }
-    router.push(target);
+    const nextHref =
+      status !== "authenticated"
+        ? `/login?callbackUrl=${encodeURIComponent(target)}`
+        : target;
+    startBuyNowTransition(() => {
+      router.push(nextHref);
+    });
   };
 
   /* ---------- render ---------------------------------------------- */
@@ -390,14 +394,14 @@ const ProductActions = ({
         </div>
       )}
 
-      {/* ── Color picker ─────────────────────────────────────────── */}
+      {/* â”€â”€ Color picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {hasColors && (
         <div>
           <p className="mb-2.5 text-sm font-semibold text-gray-900">
             Color
             {selectedColor && (
               <span className="ml-1.5 font-normal text-gray-500">
-                — {colorIsHex(selectedColor) ? "Selected" : selectedColor}
+                â€” {colorIsHex(selectedColor) ? "Selected" : selectedColor}
               </span>
             )}
           </p>
@@ -467,7 +471,7 @@ const ProductActions = ({
         </div>
       )}
 
-      {/* ── Size picker ──────────────────────────────────────────── */}
+      {/* â”€â”€ Size picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {hasSizes && (
         <div>
           <div className="mb-2.5 flex items-center gap-1.5">
@@ -476,7 +480,7 @@ const ProductActions = ({
               {sizeHeading(sizeType)}
               {selectedSize && (
                 <span className="ml-1.5 font-normal text-gray-500">
-                  — {selectedSize}
+                  â€” {selectedSize}
                 </span>
               )}
             </p>
@@ -524,7 +528,7 @@ const ProductActions = ({
         </div>
       )}
 
-      {/* ── Fallback: flat variant picker (single dimension only) ─ */}
+      {/* â”€â”€ Fallback: flat variant picker (single dimension only) â”€ */}
       {hasVariantChoice && !hasColors && !hasSizes && (
         <div>
           <p className="mb-2 text-sm font-semibold text-gray-900">
@@ -581,7 +585,7 @@ const ProductActions = ({
               <span className="text-emerald-600">In stock</span>
               {stockCount <= 5 && (
                 <span className="ml-1 text-amber-600">
-                  · only {stockCount} left
+                  Â· only {stockCount} left
                 </span>
               )}
             </>
@@ -594,6 +598,7 @@ const ProductActions = ({
       <div className="flex items-center gap-4">
         <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
           <button
+            type="button"
             onClick={() => handleQuantityChange(-1)}
             disabled={quantity <= 1}
             className="p-2.5 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -602,6 +607,7 @@ const ProductActions = ({
           </button>
           <span className="w-12 text-center font-medium text-gray-900">{quantity}</span>
           <button
+            type="button"
             onClick={() => handleQuantityChange(1)}
             disabled={quantity >= stockCount}
             className="p-2.5 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -611,33 +617,48 @@ const ProductActions = ({
         </div>
 
         <button
+          type="button"
           onClick={() => {
             void handleAddToCart();
           }}
           disabled={!inStock || isCartBusy}
+          aria-busy={isCartBusy}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all ${
             inStock
               ? "bg-brand-red text-brand-white hover:bg-brand-red-hover"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
         >
-          <ShoppingCart className="w-4 h-4" />
-          {isCartBusy ? "Adding…" : "Add to cart"}
+          {isCartBusy ? (
+            <ButtonLoader label="Adding..." />
+          ) : (
+            <>
+              <ShoppingCart className="w-4 h-4" />
+              Add to cart
+            </>
+          )}
         </button>
       </div>
 
       <button
         type="button"
         onClick={handleBuyNow}
-        disabled={!inStock}
+        disabled={!inStock || isBuyNowPending}
+        aria-busy={isBuyNowPending}
         className={`flex w-full items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold transition-all ${
           inStock
             ? "bg-brand-black text-brand-white shadow-md hover:-translate-y-0.5 hover:bg-brand-dark-surface hover:shadow-lg"
             : "bg-gray-200 text-gray-500 cursor-not-allowed"
         }`}
       >
-        <Zap className="h-4 w-4" />
-        Buy now
+        {isBuyNowPending ? (
+          <ButtonLoader label="Preparing checkout..." />
+        ) : (
+          <>
+            <Zap className="h-4 w-4" />
+            Buy now
+          </>
+        )}
       </button>
     </div>
   );

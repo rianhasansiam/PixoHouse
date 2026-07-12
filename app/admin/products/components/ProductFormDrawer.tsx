@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 import {
   makeEmptyVariant,
@@ -12,6 +12,7 @@ import {
 import ImageUploader from "@/components/ui/ImageUploader";
 import MultiImageUploader from "@/components/ui/MultiImageUploader";
 import AdvancedColorPicker from "@/components/ui/AdvancedColorPicker";
+import { ButtonLoader } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 import Field from "./Field";
@@ -448,10 +449,18 @@ export default function ProductFormDrawer({
                 <button
                   type="submit"
                   disabled={isSubmitting}
+                  aria-busy={isSubmitting}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-brand-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {mode === "create" ? "Create Product" : "Save Changes"}
+                  {isSubmitting ? (
+                    <ButtonLoader
+                      label={mode === "create" ? "Creating..." : "Saving..."}
+                    />
+                  ) : mode === "create" ? (
+                    "Create Product"
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </div>

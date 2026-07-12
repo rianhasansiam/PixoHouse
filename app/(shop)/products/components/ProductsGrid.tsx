@@ -9,6 +9,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { setCartData, setCartError as setCartErrorAction } from "@/store/slices/cart.slice";
+import { ButtonLoader } from "@/components/ui/loading";
 import type { AppDispatch } from "@/store";
 import {
   canUseServerCart,
@@ -279,10 +280,17 @@ function ListItem({ product }: { product: Product }) {
                 void handleAddToCart();
               }}
               disabled={isCartBusy}
+              aria-busy={isCartBusy}
               className="hidden items-center gap-1.5 rounded-full bg-brand-red px-3 py-1.5 text-xs font-semibold text-brand-white shadow-sm transition hover:bg-brand-red-hover hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
             >
-              <ShoppingCart className="h-3.5 w-3.5" />
-              Add to Cart
+              {isCartBusy ? (
+                <ButtonLoader label="Adding..." />
+              ) : (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  Add to Cart
+                </>
+              )}
             </button>
           ) : (
             <span className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-600">

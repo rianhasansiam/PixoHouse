@@ -22,6 +22,10 @@ import {
 import { computeCartSummary } from "@/features/cart/summary";
 import type { AppDispatch, RootState } from "@/store";
 import { toast } from "@/lib/feedback";
+import {
+  CheckoutPageSkeleton,
+  FullPageLoader,
+} from "@/components/ui/loading";
 
 import CheckoutHeader from "./components/CheckoutHeader";
 import CheckoutItemsCard from "./components/CheckoutItemsCard";
@@ -362,34 +366,18 @@ function CheckoutPageInner() {
   // sees an empty form for a flash before the redirect kicks in.
   if (authStatus !== "authenticated") {
     return (
-      <main className="min-h-screen bg-brand-light-bg">
-        <div className="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6">
-          <div className="rounded-3xl border border-brand-border bg-brand-white p-10 text-center shadow-sm">
-            <p className="text-lg font-semibold text-gray-900">
-              {authStatus === "loading"
-                ? "Loading checkout..."
-                : "Please sign in to checkout"}
-            </p>
-            <p className="mt-2 text-sm text-gray-600">
-              {authStatus === "loading"
-                ? "One moment while we load your account."
-                : "Redirecting you to the sign-in page so we can attach this order to your account."}
-            </p>
-            {authStatus === "unauthenticated" && (
-              <Link
-                href={`/login?callbackUrl=${encodeURIComponent(
-                  searchParams.get("buy")
-                    ? `/checkout?buy=${encodeURIComponent(searchParams.get("buy")!)}`
-                    : "/checkout",
-                )}`}
-                className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-brand-red px-5 py-2.5 text-sm font-bold text-brand-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl"
-              >
-                Sign in to continue
-              </Link>
-            )}
-          </div>
-        </div>
-      </main>
+      <FullPageLoader
+        title={
+          authStatus === "loading"
+            ? "Loading checkout..."
+            : "Redirecting to sign in..."
+        }
+        message={
+          authStatus === "loading"
+            ? "One moment while we load your account."
+            : "Please wait while we attach checkout to your account."
+        }
+      />
     );
   }
 
@@ -484,17 +472,7 @@ function CheckoutPageInner() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen bg-brand-light-bg">
-          <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-            <div className="rounded-3xl border border-brand-border bg-brand-white p-6 text-center text-sm text-brand-text-muted shadow-sm">
-              Loading checkout...
-            </div>
-          </div>
-        </main>
-      }
-    >
+    <Suspense fallback={<CheckoutPageSkeleton />}>
       <CheckoutPageInner />
     </Suspense>
   );

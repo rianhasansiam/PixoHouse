@@ -1,6 +1,8 @@
 "use client";
 
-import { CalendarRange, Hash, Infinity as InfinityIcon, Loader2, Play } from "lucide-react";
+import { CalendarRange, Hash, Infinity as InfinityIcon, Play } from "lucide-react";
+
+import { ButtonLoader } from "@/components/ui/loading";
 
 type Props = {
   from: string;
@@ -108,14 +110,17 @@ export default function ReportFilters(props: Props) {
             type="button"
             onClick={props.onGenerate}
             disabled={props.isLoading}
+            aria-busy={props.isLoading}
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {props.isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <ButtonLoader label="Generating..." />
             ) : (
-              <Play className="h-4 w-4" />
+              <>
+                <Play className="h-4 w-4" />
+                Generate report
+              </>
             )}
-            {props.isLoading ? "Generating..." : "Generate report"}
           </button>
         </div>
       </div>

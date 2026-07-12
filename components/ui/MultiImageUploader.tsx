@@ -3,10 +3,11 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useId, useRef, useState } from "react";
-import { ImagePlus, Loader2, UploadCloud, X } from "lucide-react";
+import { ImagePlus, UploadCloud, X } from "lucide-react";
 
 import { ACCEPTED_IMAGE_TYPES, uploadImage } from "@/features/upload/api";
 import { cn } from "@/lib/utils";
+import { LoadingSpinner } from "@/components/ui/loading";
 
 type MultiImageUploaderProps = {
   /** Current list of hosted image URLs. */
@@ -146,7 +147,7 @@ export default function MultiImageUploader({
         >
           <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-red/10 text-brand-red">
             {isUploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <LoadingSpinner decorative size="sm" />
             ) : (
               <ImagePlus className="h-4 w-4" />
             )}

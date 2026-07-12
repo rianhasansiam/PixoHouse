@@ -25,6 +25,7 @@ import {
 
 import FloatField from "@/app/(auth)/_components/FloatField";
 import ImageUploader from "@/components/ui/ImageUploader";
+import { ButtonLoader } from "@/components/ui/loading";
 
 type SettingsTabProps = {
   user: ProfileUser;
@@ -272,10 +273,17 @@ export default function SettingsTab({ user, onUpdated }: SettingsTabProps) {
             disabled={
               !dirty || submitState.status === "saving" || Boolean(blockingError)
             }
+            aria-busy={submitState.status === "saving"}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-5 text-sm font-bold text-brand-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:translate-y-0 sm:w-auto"
           >
-            <Save className="h-4 w-4" />
-            {submitState.status === "saving" ? "Saving..." : "Save changes"}
+            {submitState.status === "saving" ? (
+              <ButtonLoader label="Saving..." />
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                Save changes
+              </>
+            )}
           </button>
         </div>
       </div>

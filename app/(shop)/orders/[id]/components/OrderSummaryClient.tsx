@@ -25,6 +25,7 @@ import {
 } from "@/features/orders/storage";
 import { ORDER_STATUS_META } from "@/lib/orders/status";
 import ColorBadge from "@/components/ui/ColorBadge";
+import { ButtonLoader, OrderDetailsPageSkeleton } from "@/components/ui/loading";
 import OrderTracker from "./OrderTracker";
 
 const FALLBACK_IMAGE =
@@ -172,15 +173,7 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
     authStatus === "loading" ||
     (authStatus === "authenticated" && state.status === "loading")
   ) {
-    return (
-      <main className="min-h-screen bg-brand-light-bg">
-        <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6">
-          <div className="rounded-3xl border border-brand-border bg-brand-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-            Loading order summary...
-          </div>
-        </div>
-      </main>
-    );
+    return <OrderDetailsPageSkeleton />;
   }
 
   if (authStatus !== "authenticated" || state.status === "error" || !order) {
@@ -277,8 +270,14 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                   className="inline-flex items-center gap-2 rounded-2xl bg-white/15 px-4 py-2 text-sm font-bold text-white backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   aria-busy={downloading}
                 >
-                  <Download className="h-4 w-4" />
-                  {downloading ? "Generating PDF..." : "Download PDF"}
+                  {downloading ? (
+                    <ButtonLoader label="Generating PDF..." />
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </>
+                  )}
                 </button>
                 {downloadError && (
                   <p className="rounded-lg bg-rose-500/30 px-2 py-1 text-[11px] font-medium text-white">
@@ -479,8 +478,14 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                 className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red text-base font-bold text-brand-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl disabled:cursor-not-allowed disabled:bg-gray-300 disabled:hover:translate-y-0"
                 aria-busy={downloading}
               >
-                <Download className="h-4 w-4" />
-                {downloading ? "Generating PDF..." : "Download PDF receipt"}
+                {downloading ? (
+                  <ButtonLoader label="Generating PDF..." />
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download PDF receipt
+                  </>
+                )}
               </button>
               {downloadError && (
                 <p className="mt-2 flex items-start gap-1.5 rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-medium text-red-700">

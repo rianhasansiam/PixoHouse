@@ -10,11 +10,11 @@ import {
   MessageSquare,
   Tag,
   CheckCircle2,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 import { toast } from "@/lib/feedback";
 import { siteConfig } from "@/lib/seo/site";
+import { ButtonLoader } from "@/components/ui/loading";
 
 const SERVICE_ID = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID ?? "";
 const TEMPLATE_ID = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ?? "";
@@ -39,6 +39,8 @@ export default function ContactForm() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const isSending = status === "sending";
+  const fieldsDisabled = status === "sending" || status === "sent";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +194,7 @@ export default function ContactForm() {
 
           <div className="my-5 h-0.5 w-full bg-brand-border rounded-full" />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-busy={isSending}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
                 label="Full Name"
@@ -200,6 +202,7 @@ export default function ContactForm() {
                 value={name}
                 onChange={setName}
                 placeholder="Your name"
+                disabled={fieldsDisabled}
                 required
               />
               <Field
@@ -209,6 +212,7 @@ export default function ContactForm() {
                 onChange={setEmail}
                 placeholder="you@example.com"
                 type="email"
+                disabled={fieldsDisabled}
                 required
               />
             </div>
@@ -221,6 +225,7 @@ export default function ContactForm() {
                 onChange={setPhone}
                 placeholder="+91 ..."
                 type="tel"
+                disabled={fieldsDisabled}
               />
 
               <div>
@@ -232,6 +237,7 @@ export default function ContactForm() {
                   <select
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
+                    disabled={fieldsDisabled}
                     className="h-11 w-full appearance-none rounded-xl border border-brand-border bg-white pl-9 pr-9 text-sm text-foreground shadow-sm transition-colors focus:border-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red/30"
                   >
                     {subjects.map((s) => (
@@ -257,6 +263,7 @@ export default function ContactForm() {
                 placeholder="Tell us how we can help..."
                 rows={5}
                 required
+                disabled={fieldsDisabled}
                 className="w-full resize-none rounded-xl border border-brand-border bg-white p-3 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:border-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red/30"
               />
             </div>
@@ -272,14 +279,12 @@ export default function ContactForm() {
 
               <button
                 type="submit"
-                disabled={status === "sending" || status === "sent"}
+                disabled={fieldsDisabled}
+                aria-busy={isSending}
                 className="group inline-flex items-center gap-2 rounded-full bg-brand-red px-6 py-2.5 text-sm font-bold text-brand-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-80"
               >
                 {status === "sending" && (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
+                  <ButtonLoader label="Sending..." />
                 )}
                 {status === "sent" && (
                   <>
@@ -317,6 +322,7 @@ type FieldProps = {
   placeholder?: string;
   type?: string;
   required?: boolean;
+  disabled?: boolean;
 };
 
 function Field({
@@ -327,6 +333,7 @@ function Field({
   placeholder,
   type = "text",
   required,
+  disabled,
 }: FieldProps) {
   return (
     <div>
@@ -341,6 +348,7 @@ function Field({
           type={type}
           value={value}
           required={required}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="h-11 w-full rounded-xl border border-brand-border bg-white pl-9 pr-3 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:border-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red/30"

@@ -1,7 +1,8 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import type React from "react";
 
+import { LoadingSpinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 export type ActionTone = "emerald" | "amber" | "red";
@@ -30,12 +31,13 @@ export default function MessageActionButton({
       type="button"
       onClick={onClick}
       disabled={busy}
+      aria-busy={busy}
       className={cn(
         "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
         ACTION_TONE[tone],
       )}
     >
-      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
+      {busy ? <LoadingSpinner decorative size="sm" /> : icon}
       {label}
     </button>
   );

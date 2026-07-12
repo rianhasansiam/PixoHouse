@@ -1,11 +1,12 @@
 "use client";
 
-import { Search, X, Loader2, PackageSearch } from "lucide-react";
+import { Search, X, PackageSearch } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 import { searchProductsFromApi, type Product } from "@/features/products/api";
 
@@ -215,7 +216,7 @@ export default function SearchBar({
         >
           {isLoading && (
             <div className="flex items-center justify-center gap-2 px-4 py-6 text-sm text-brand-red">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <LoadingSpinner decorative size="sm" />
               <span>Searching...</span>
             </div>
           )}

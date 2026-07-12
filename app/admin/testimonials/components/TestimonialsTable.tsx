@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MessageSquareQuote, Pencil, Trash2 } from "lucide-react";
+import { MessageSquareQuote, Pencil, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
@@ -8,6 +8,7 @@ import {
   type AdminTestimonialRow,
   type TestimonialStatus,
 } from "@/features/admin-testimonials/api";
+import { LoadingSpinner, TableSkeleton } from "@/components/ui/loading";
 import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
@@ -37,14 +38,7 @@ export default function TestimonialsTable({
   onDelete: (id: string) => void;
 }) {
   if (isLoading && totalCount === 0) {
-    return (
-      <div className="rounded-2xl border border-brand-border bg-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading testimonials...
-        </span>
-      </div>
-    );
+    return <TableSkeleton rows={6} columns={7} ariaLabel="Loading testimonials" />;
   }
 
   if (testimonials.length === 0) {
@@ -143,10 +137,11 @@ export default function TestimonialsTable({
                         type="button"
                         onClick={() => onDelete(row.id)}
                         disabled={isBusy}
+                        aria-busy={isBusy}
                         className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isBusy ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <LoadingSpinner decorative size="xs" />
                         ) : (
                           <Trash2 className="h-3 w-3" />
                         )}

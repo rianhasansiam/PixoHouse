@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ShoppingBag, Loader2 } from 'lucide-react'
+import { ShoppingBag } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useDispatch } from 'react-redux'
 
@@ -26,6 +26,7 @@ import {
   setCartData,
   setCartError as setCartErrorAction,
 } from '@/store/slices/cart.slice'
+import { ButtonLoader } from '@/components/ui/loading'
 
 type RecentProductItem = {
   id: string
@@ -185,14 +186,17 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({
                   void handleAddToBag(e, product)
                 }}
                 disabled={cartBusyId !== null}
+                aria-busy={cartBusyId === product.id}
                 className="w-full py-1.5 bg-brand-red text-brand-white text-xs font-medium rounded-lg hover:bg-brand-red-hover transition-colors flex items-center justify-center gap-1"
               >
                 {cartBusyId === product.id ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <ButtonLoader label="Adding..." />
                 ) : (
-                  <ShoppingBag className="w-3 h-3" />
+                  <>
+                    <ShoppingBag className="w-3 h-3" />
+                    Add to bag
+                  </>
                 )}
-                {cartBusyId === product.id ? 'Adding...' : 'Add to bag'}
               </button>
             </div>
           </Link>
@@ -205,13 +209,11 @@ const RelatedProducts: React.FC<RelatedProductsProps> = ({
           <button 
             onClick={handleLoadMore}
             disabled={isLoading}
+            aria-busy={isLoading}
             className="inline-flex items-center gap-2 px-8 py-2.5 bg-white border-2 border-gray-200 text-gray-700 font-medium rounded-lg hover:border-brand-red hover:bg-brand-light-bg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
+              <ButtonLoader label="Loading..." />
             ) : (
               'Load More'
             )}

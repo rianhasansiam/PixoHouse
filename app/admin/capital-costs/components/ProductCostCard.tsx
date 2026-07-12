@@ -1,9 +1,10 @@
 "use client";
 
-import { Boxes, Info, Loader2 } from "lucide-react";
+import { Boxes, Info } from "lucide-react";
 
 import type { ProductCostSummary } from "@/features/admin-capital-costs/api";
 import { formatCurrency } from "@/features/admin-capital-costs/api";
+import { SectionLoader } from "@/components/ui/loading";
 
 /**
  * Read-only product-cost summary.
@@ -38,12 +39,7 @@ export default function ProductCostCard({
       </header>
 
       {isLoading && !productCost ? (
-        <div className="rounded-xl border border-brand-border bg-brand-light-bg p-6 text-center text-sm text-brand-text-muted">
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Calculating product cost...
-          </span>
-        </div>
+        <SectionLoader title="Calculating product cost" rows={3} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-brand-border bg-brand-light-bg p-3">

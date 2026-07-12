@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -9,6 +8,7 @@ import FilterSidebar from "./components/FilterSidebar";
 import MobileFilterDrawer from "./components/MobileFilterDrawer";
 import ProductsGrid from "./components/ProductsGrid";
 import ProductToolbar from "./components/ProductToolbar";
+import { LoadingSpinner, ProductGridSkeleton } from "@/components/ui/loading";
 import {
   setAllProducts,
   setAllProductsError,
@@ -314,9 +314,8 @@ function AllProductsPageInner() {
             />
 
             {isLoadingFromStore && products.length === 0 ? (
-              <div className="mt-10 flex items-center justify-center gap-2 text-sm text-brand-text-muted">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading products from server...</span>
+              <div className="mt-4" aria-busy="true" aria-label="Loading products">
+                <ProductGridSkeleton wide={!sidebarOpen} />
               </div>
             ) : errorFromStore && products.length === 0 ? (
               <div className="mt-10 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -337,7 +336,7 @@ function AllProductsPageInner() {
                     <>
                       <div ref={sentinelRef} aria-hidden className="h-1 w-full" />
                       <div className="flex items-center gap-2 text-sm text-brand-text-muted">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <LoadingSpinner decorative size="sm" />
                         <span>Loading more products...</span>
                       </div>
                     </>

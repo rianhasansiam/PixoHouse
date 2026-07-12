@@ -30,6 +30,7 @@ import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
 } from "@/lib/motion/list-removal";
+import { TableSkeleton } from "@/components/ui/loading";
 
 import { FALLBACK_PRODUCT_IMAGE, ORDER_STATUS_TONE } from "./constants";
 
@@ -223,9 +224,7 @@ export default function OrdersTab() {
       )}
 
       {state.status === "loading" && (
-        <div className="rounded-2xl border border-brand-border bg-brand-white p-6 text-center text-sm text-brand-text-muted shadow-sm sm:rounded-3xl sm:p-10">
-          Loading orders...
-        </div>
+        <TableSkeleton rows={5} columns={5} ariaLabel="Loading orders" />
       )}
 
       {state.status === "error" && (

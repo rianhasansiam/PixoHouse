@@ -2,10 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Eye, EyeOff, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { FALLBACK_IMAGE, type AdminProduct } from "@/features/admin-products/api";
+import { TableSkeleton } from "@/components/ui/loading";
 import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
@@ -35,14 +36,7 @@ export default function ProductsTable({
   onDelete: (product: AdminProduct) => void;
 }) {
   if (isLoading && totalCount === 0) {
-    return (
-      <div className="rounded-2xl border border-brand-border bg-brand-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading products...
-        </span>
-      </div>
-    );
+    return <TableSkeleton rows={6} columns={9} ariaLabel="Loading products" />;
   }
 
   if (products.length === 0) {

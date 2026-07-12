@@ -34,6 +34,7 @@ import {
   type AdminActivityPage,
   type AdminActivitySource,
 } from "@/features/admin-activities/api";
+import { LoadingSpinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -184,9 +185,14 @@ export default function ActivityLogClient() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
+          aria-busy={loading}
           className="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-border bg-white px-3 text-xs font-bold text-brand-red shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-red hover:bg-brand-light-bg disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
         >
-          <RotateCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          {loading ? (
+            <LoadingSpinner decorative size="sm" />
+          ) : (
+            <RotateCcw className="h-3.5 w-3.5" />
+          )}
           {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>

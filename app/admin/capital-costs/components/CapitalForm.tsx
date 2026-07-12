@@ -1,8 +1,10 @@
 "use client";
 
-import { Loader2, Plus, RotateCcw, Wallet } from "lucide-react";
+import type React from "react";
+import { Plus, RotateCcw, Wallet } from "lucide-react";
 
 import type { CapitalFormState } from "@/features/admin-capital-costs/api";
+import { ButtonLoader, LoadingSpinner, SectionLoader } from "@/components/ui/loading";
 import Field from "@/app/admin/components/Field";
 
 export default function CapitalForm({
@@ -45,10 +47,16 @@ export default function CapitalForm({
         <button
           type="button"
           onClick={onRefresh}
+          disabled={isLoading}
+          aria-busy={isLoading}
           className="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-border px-3 text-xs font-semibold text-foreground transition hover:bg-brand-light-bg"
         >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Refresh
+          {isLoading ? (
+            <LoadingSpinner decorative size="sm" />
+          ) : (
+            <RotateCcw className="h-3.5 w-3.5" />
+          )}
+          {isLoading ? "Refreshing..." : "Refresh"}
         </button>
       </header>
 
@@ -64,12 +72,7 @@ export default function CapitalForm({
       )}
 
       {isLoading && !hasCapital ? (
-        <div className="rounded-xl border border-brand-border bg-brand-light-bg p-6 text-center text-sm text-brand-text-muted">
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading capital...
-          </span>
-        </div>
+        <SectionLoader title="Loading capital" rows={3} />
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
@@ -108,14 +111,17 @@ export default function CapitalForm({
             <button
               type="submit"
               disabled={isSaving}
+              aria-busy={isSaving}
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <ButtonLoader label="Adding..." />
               ) : (
-                <Plus className="h-4 w-4" />
+                <>
+                  <Plus className="h-4 w-4" />
+                  Add capital
+                </>
               )}
-              Add capital
             </button>
           </div>
         </form>

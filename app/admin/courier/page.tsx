@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Loader2,
   Package2,
   RotateCcw,
   Search,
@@ -25,6 +24,12 @@ import {
   checkCourierInfo,
   type CourierReport,
 } from "@/features/admin-courier/api";
+import {
+  ButtonLoader,
+  LoadingSpinner,
+  SectionLoader,
+  TableSkeleton,
+} from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 import CourierReportPanel from "./components/CourierReportPanel";
 
@@ -184,14 +189,17 @@ export default function AdminCourierPage() {
           <button
             type="submit"
             disabled={checking || !manualPhone.trim()}
+            aria-busy={checking}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-red px-5 text-sm font-semibold text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {checking ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <ButtonLoader label="Checking..." />
             ) : (
-              <Search className="h-4 w-4" />
+              <>
+                <Search className="h-4 w-4" />
+                Check
+              </>
             )}
-            Check
           </button>
         </form>
       </div>
@@ -204,12 +212,10 @@ export default function AdminCourierPage() {
 
       {/* Report */}
       {checking && !report ? (
-        <div className="rounded-2xl border border-brand-border bg-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Checking courier history for {activePhone}...
-          </span>
-        </div>
+        <SectionLoader
+          title={`Checking courier history${activePhone ? ` for ${activePhone}` : ""}`}
+          rows={4}
+        />
       ) : report ? (
         <CourierReportPanel report={report} />
       ) : null}
@@ -230,10 +236,16 @@ export default function AdminCourierPage() {
             onClick={() => {
               void refreshOrders();
             }}
+            disabled={ordersLoading}
+            aria-busy={ordersLoading}
             className="inline-flex h-9 items-center gap-2 self-start rounded-xl border border-brand-border px-3 text-sm font-semibold text-brand-black transition hover:bg-brand-light-bg sm:self-auto"
           >
-            <RotateCcw className="h-4 w-4" />
-            Refresh
+            {ordersLoading ? (
+              <LoadingSpinner decorative size="sm" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            {ordersLoading ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
@@ -256,12 +268,7 @@ export default function AdminCourierPage() {
 
         <div className="mt-3 overflow-hidden rounded-xl border border-brand-border">
           {ordersLoading && orders.length === 0 ? (
-            <div className="p-8 text-center text-sm text-brand-text-muted">
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading orders...
-              </span>
-            </div>
+            <TableSkeleton rows={6} columns={5} ariaLabel="Loading orders" />
           ) : customers.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-600">
               <Package2 className="mx-auto mb-2 h-8 w-8 text-brand-text-muted" />
@@ -316,14 +323,17 @@ export default function AdminCourierPage() {
                               void runCheck(customer.phone);
                             }}
                             disabled={checking}
+                            aria-busy={checking && activePhone === customer.phone.trim()}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-brand-border px-3 py-1.5 text-xs font-semibold text-brand-black transition hover:bg-brand-light-bg disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {checking && activePhone === customer.phone.trim() ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <ButtonLoader label="Checking" />
                             ) : (
-                              <ShieldCheck className="h-3.5 w-3.5" />
+                              <>
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Check
+                              </>
                             )}
-                            Check
                           </button>
                         </td>
                       </tr>

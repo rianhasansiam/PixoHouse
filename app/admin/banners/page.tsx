@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 
+import { TableSkeleton } from "@/components/ui/loading";
 import {
   removeCarouselBanner,
   removeCategoryBanner,
@@ -612,12 +612,7 @@ export default function AdminBannersPage() {
       )}
 
       {isLoading && !isHydrated ? (
-        <div className="rounded-2xl border border-brand-border bg-brand-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading banners...
-          </span>
-        </div>
+        <TableSkeleton rows={5} columns={6} ariaLabel="Loading banners" />
       ) : activeTab === "carousel" ? (
         <CarouselList
           rows={visibleCarousel}

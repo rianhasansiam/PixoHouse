@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil, Receipt, Trash2 } from "lucide-react";
+import { Pencil, Receipt, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
@@ -8,6 +8,7 @@ import {
   formatDateTime,
   type OtherCostRow,
 } from "@/features/admin-capital-costs/api";
+import { LoadingSpinner, TableSkeleton } from "@/components/ui/loading";
 import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
@@ -29,12 +30,7 @@ export default function OtherCostsTable({
   onDelete: (cost: OtherCostRow) => void;
 }) {
   if (isLoading && costs.length === 0) {
-    return (
-      <div className="rounded-2xl border border-brand-border bg-brand-white p-10 text-center text-sm text-gray-600 shadow-sm">
-        <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-brand-text-muted" />
-        Loading cost records...
-      </div>
-    );
+    return <TableSkeleton rows={5} columns={4} ariaLabel="Loading cost records" />;
   }
 
   if (costs.length === 0) {
@@ -105,10 +101,11 @@ export default function OtherCostsTable({
                           type="button"
                           onClick={() => onDelete(cost)}
                           disabled={isBusy}
+                          aria-busy={isBusy}
                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isBusy ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <LoadingSpinner decorative size="sm" />
                           ) : (
                             <Trash2 className="h-3.5 w-3.5" />
                           )}

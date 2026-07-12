@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Eye, EyeOff, FolderTree, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Eye, EyeOff, FolderTree, Pencil, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
@@ -10,6 +10,7 @@ import {
   type AdminCategoryRow,
   type CategoryStatus,
 } from "@/features/admin-categories/api";
+import { LoadingSpinner, TableSkeleton } from "@/components/ui/loading";
 import {
   LIST_ITEM_TRANSITION,
   LIST_ITEM_VARIANTS,
@@ -39,14 +40,7 @@ export default function CategoriesTable({
   onDelete: (category: AdminCategoryRow) => void;
 }) {
   if (isLoading && totalCount === 0) {
-    return (
-      <div className="rounded-2xl border border-brand-border bg-brand-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading categories...
-        </span>
-      </div>
-    );
+    return <TableSkeleton rows={6} columns={6} ariaLabel="Loading categories" />;
   }
 
   if (categories.length === 0) {
@@ -165,10 +159,11 @@ export default function CategoriesTable({
                         type="button"
                         onClick={() => onDelete(category)}
                         disabled={isBusy}
+                        aria-busy={isBusy}
                         className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isBusy ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <LoadingSpinner decorative size="sm" />
                         ) : (
                           <Trash2 className="h-3.5 w-3.5" />
                         )}

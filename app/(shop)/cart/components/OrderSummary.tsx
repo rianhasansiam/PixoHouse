@@ -7,6 +7,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import PromoCodeInput from "./PromoCodeInput";
+import { ButtonLoader } from "@/components/ui/loading";
 
 type AppliedPromo = {
   code: string;
@@ -26,6 +27,7 @@ type OrderSummaryProps = {
   onApplyPromo: (code: string) => AppliedPromo | null;
   onRemovePromo: () => void;
   onCheckout: () => void;
+  isCheckingOut?: boolean;
 };
 
 export default function OrderSummary({
@@ -40,6 +42,7 @@ export default function OrderSummary({
   onApplyPromo,
   onRemovePromo,
   onCheckout,
+  isCheckingOut = false,
 }: OrderSummaryProps) {
   const totalSaved = totalSavings + discount;
 
@@ -93,11 +96,19 @@ export default function OrderSummary({
       <button
         type="button"
         onClick={onCheckout}
+        disabled={isCheckingOut}
+        aria-busy={isCheckingOut}
         className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-red px-5 text-base font-bold text-brand-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl"
       >
-        <Lock className="h-4 w-4" />
-        Secure Checkout
-        <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+        {isCheckingOut ? (
+          <ButtonLoader label="Opening checkout..." />
+        ) : (
+          <>
+            <Lock className="h-4 w-4" />
+            Secure Checkout
+            <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </>
+        )}
       </button>
 
       <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500">

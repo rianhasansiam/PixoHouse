@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
@@ -47,6 +47,7 @@ import {
   LIST_ITEM_VARIANTS,
 } from "@/lib/motion/list-removal";
 import { confirm, toast } from "@/lib/feedback";
+import { ButtonLoader, LoadingSpinner, SectionLoader } from "@/components/ui/loading";
 
 type AppliedPromo = {
   code: string;
@@ -122,6 +123,7 @@ export default function CartPage() {
 
   const [saved, setSaved] = useState<SavedItem[]>([]);
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
+  const [isCheckoutPending, startCheckoutTransition] = useTransition();
   const itemsRef = useRef(items);
 
   const canUseServer = canUseServerCart(session?.user?.role, status);
@@ -478,10 +480,14 @@ export default function CartPage() {
     // sign-in page first, with a callbackUrl that lands them right
     // back on /checkout.
     if (status !== "authenticated") {
-      router.push(`/login?callbackUrl=${encodeURIComponent("/checkout")}`);
+      startCheckoutTransition(() => {
+        router.push(`/login?callbackUrl=${encodeURIComponent("/checkout")}`);
+      });
       return;
     }
-    router.push("/checkout");
+    startCheckoutTransition(() => {
+      router.push("/checkout");
+    });
   };
 
   const itemCards = visibleCartItems.map(toCartViewModel);
@@ -494,7 +500,12 @@ export default function CartPage() {
 
         <div className="mt-2 flex items-center justify-between px-1 text-xs text-gray-500">
           <span>Storage mode: {mode === "server" ? "Server + Local" : "Local only"}</span>
-          {isLoading && <span>Syncing cart...</span>}
+          {isLoading && (
+            <span className="inline-flex items-center gap-1.5">
+              <LoadingSpinner decorative size="xs" />
+              Syncing cart...
+            </span>
+          )}
         </div>
 
         {error && (
@@ -504,9 +515,7 @@ export default function CartPage() {
         )}
 
         {isLoading && isEmpty ? (
-          <div className="mt-6 rounded-2xl border border-brand-border bg-brand-white p-6 text-center text-sm text-brand-text-muted">
-            Loading cart...
-          </div>
+          <SectionLoader title="Loading cart" rows={6} className="mt-6" />
         ) : isEmpty ? (
           <>
             <EmptyCart />
@@ -582,6 +591,7 @@ export default function CartPage() {
                 onApplyPromo={handleApplyPromo}
                 onRemovePromo={handleRemovePromo}
                 onCheckout={handleCheckout}
+                isCheckingOut={isCheckoutPending}
               />
             </div>
 
@@ -598,6 +608,7 @@ export default function CartPage() {
                 onApplyPromo={handleApplyPromo}
                 onRemovePromo={handleRemovePromo}
                 onCheckout={handleCheckout}
+                isCheckingOut={isCheckoutPending}
               />
             </div>
           </div>
@@ -620,10 +631,18 @@ export default function CartPage() {
             <button
               type="button"
               onClick={handleCheckout}
+              disabled={isCheckoutPending}
+              aria-busy={isCheckoutPending}
               className="inline-flex h-12 items-center gap-2 rounded-2xl bg-brand-red px-5 text-sm font-bold text-brand-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-red-hover hover:shadow-xl"
             >
-              <Lock className="h-4 w-4" />
-              Checkout
+              {isCheckoutPending ? (
+                <ButtonLoader label="Opening checkout..." />
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  Checkout
+                </>
+              )}
             </button>
           </div>
         </div>

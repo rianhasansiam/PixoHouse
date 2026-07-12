@@ -2,6 +2,7 @@
 
 import { RotateCcw, Search } from "lucide-react";
 
+import { LoadingSpinner } from "@/components/ui/loading";
 import {
   STATUS_VALUES,
   type ContactMessageStatus,
@@ -60,10 +61,16 @@ export default function MessagesToolbar({
         <button
           type="button"
           onClick={onRefresh}
+          disabled={isLoading}
+          aria-busy={isLoading}
           className="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-border px-3 text-sm font-semibold text-foreground transition hover:bg-brand-light-bg"
         >
-          <RotateCcw className="h-4 w-4" />
-          Refresh
+          {isLoading ? (
+            <LoadingSpinner decorative size="sm" />
+          ) : (
+            <RotateCcw className="h-4 w-4" />
+          )}
+          {isLoading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
@@ -71,7 +78,12 @@ export default function MessagesToolbar({
         <span>
           {visibleCount} / {totalCount} messages
         </span>
-        {isLoading && <span>Syncing messages...</span>}
+        {isLoading && (
+          <span className="inline-flex items-center gap-1.5">
+            <LoadingSpinner decorative size="xs" />
+            Syncing messages...
+          </span>
+        )}
       </div>
     </div>
   );

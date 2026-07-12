@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 
 import {
   REPORT_DEFS,
@@ -16,6 +16,7 @@ import {
   type ReportPayload,
   type SalesReport,
 } from "@/features/admin-reports/api";
+import { ButtonLoader, SectionLoader } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -37,14 +38,7 @@ export default function ReportPreview({
   onDownload,
 }: Props) {
   if (isLoading && !payload) {
-    return (
-      <div className="rounded-2xl border border-brand-border bg-white p-10 text-center text-sm text-brand-text-muted shadow-sm">
-        <span className="inline-flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Crunching the numbers...
-        </span>
-      </div>
-    );
+    return <SectionLoader title="Crunching the numbers" rows={7} />;
   }
 
   if (!payload) {
@@ -85,14 +79,17 @@ export default function ReportPreview({
           type="button"
           onClick={onDownload}
           disabled={isDownloading}
+          aria-busy={isDownloading}
           className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-white transition hover:bg-brand-red-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <ButtonLoader label="Downloading..." />
           ) : (
-            <Download className="h-4 w-4" />
+            <>
+              <Download className="h-4 w-4" />
+              Download PDF
+            </>
           )}
-          Download PDF
         </button>
       </header>
 
