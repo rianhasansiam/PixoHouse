@@ -71,7 +71,7 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]): JsonLd {
 
 export type ProductJsonLdInput = {
   name: string;
-  description?: string | null;
+  description: string;
   /** Image URLs (absolute or site-relative). At least one recommended. */
   images?: string[];
   /** Product detail path, e.g. `/products/<id>`. */
@@ -106,9 +106,8 @@ export function productJsonLd(input: ProductJsonLdInput): JsonLd {
     "@context": "https://schema.org",
     "@type": "Product",
     name: input.name,
-    description: input.description
-      ? input.description.replace(/\s+/g, " ").trim()
-      : undefined,
+    description: input.description.replace(/\s+/g, " ").trim(),
+    url,
     image: images.length > 0 ? images : undefined,
     sku: input.sku ?? undefined,
     brand: input.brand ? { "@type": "Brand", name: input.brand } : undefined,
@@ -121,6 +120,12 @@ export function productJsonLd(input: ProductJsonLdInput): JsonLd {
       availability: input.inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      seller: {
+        "@type": "Organization",
+        name: siteConfig.name,
+        url: siteConfig.url,
+      },
     }),
   });
 }
