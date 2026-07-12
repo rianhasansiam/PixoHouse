@@ -71,7 +71,10 @@ const DealsCarousel: React.FC<DealsCarouselProps> = ({
           <Link
             key={deal.id}
             href={deal.link ?? "#"}
-            style={{ backgroundColor: resolveColorValue(deal.bgClass) ?? "var(--brand-black)" }}
+            style={{
+              backgroundColor: resolveColorValue(deal.bgClass) ?? "var(--brand-black)",
+              position: 'relative',
+            }}
             className="relative min-w-[180px] h-24 rounded-xl overflow-hidden shrink-0 snap-start group"
           >
             <Image

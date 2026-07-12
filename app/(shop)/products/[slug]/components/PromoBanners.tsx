@@ -31,7 +31,10 @@ const PromoBanners: React.FC<PromoBannersProps> = ({ banners }) => {
         <Link
           key={banner.id}
           href={banner.link ?? "#"}
-          style={{ backgroundColor: resolveColorValue(banner.bgClass) ?? "var(--brand-black)" }}
+          style={{
+            backgroundColor: resolveColorValue(banner.bgClass) ?? "var(--brand-black)",
+            position: 'relative',
+          }}
           className="block relative h-48 rounded-2xl overflow-hidden group"
         >
           <Image

@@ -151,7 +151,10 @@ const ProductGallery = ({
   return (
     <div className="space-y-3">
       {/* Main Image */}
-      <div className="relative aspect-4/5 overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      <div
+        className="relative aspect-4/5 overflow-hidden rounded-2xl border border-gray-100 bg-white"
+        style={{ position: "relative" }}
+      >
         <Image
           src={currentItem.url}
           alt={`${productName} - Image ${selectedImage + 1}`}
@@ -175,6 +178,7 @@ const ProductGallery = ({
             <button
               key={`${item.url}-${index}`}
               onClick={() => setSelectedImageUrl(item.url)}
+              style={{ position: "relative" }}
               className={cn(
                 "relative aspect-4/5 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
                 selectedImage === index

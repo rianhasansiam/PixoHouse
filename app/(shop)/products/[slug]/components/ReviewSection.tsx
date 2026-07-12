@@ -242,12 +242,16 @@ export default function ReviewSection({ productId }: { productId: string }) {
               className="bg-white rounded-xl border border-brand-border p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-4">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 bg-brand-light-bg">
+                <div
+                  className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 bg-brand-light-bg"
+                  style={{ position: 'relative' }}
+                >
                   <Image
                     src={avatarFor(review)}
                     alt={review.authorName}
                     fill
                     unoptimized
+                    sizes="40px"
                     className="object-cover"
                   />
                 </div>
