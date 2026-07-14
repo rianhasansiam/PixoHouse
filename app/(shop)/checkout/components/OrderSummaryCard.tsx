@@ -173,7 +173,11 @@ export default function OrderSummaryCard({
               />
             )}
             <SummaryRow
-              label="Shipping"
+              label={
+                summary.isOutsideDhaka
+                  ? "Delivery outside Dhaka"
+                  : "Delivery inside Dhaka"
+              }
               value={summary.shipping}
               freeLabel={summary.shipping === 0 ? "FREE" : undefined}
             />

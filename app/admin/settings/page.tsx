@@ -123,11 +123,11 @@ export default function AdminSettingsPage() {
       }
       const standardShippingFee = parseNumberField(
         settingsForm.standardShippingFee || "0",
-        "Standard delivery fee",
+        "Delivery inside Dhaka",
       );
       const expressShippingFee = parseNumberField(
         settingsForm.expressShippingFee || "0",
-        "Express delivery fee",
+        "Delivery outside Dhaka",
       );
       const freeShippingThreshold = parseNumberField(
         settingsForm.freeShippingThreshold || "0",

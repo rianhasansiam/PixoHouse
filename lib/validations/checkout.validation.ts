@@ -13,6 +13,7 @@ import { z } from "zod";
  */
 
 const PAYMENT_METHOD = ["CASH_ON_DELIVERY", "ONLINE"] as const;
+const DELIVERY_ZONES = ["INSIDE_DHAKA", "OUTSIDE_DHAKA"] as const;
 
 const checkoutItem = z.object({
   productId: z.string().trim().min(1, "Product is required."),
@@ -33,6 +34,7 @@ const checkoutItem = z.object({
  */
 export const checkoutPreviewSchema = z.object({
   items: z.array(checkoutItem).max(100).optional(),
+  deliveryZone: z.enum(DELIVERY_ZONES).default("INSIDE_DHAKA"),
   promoCode: z
     .string()
     .trim()
@@ -81,6 +83,7 @@ export const checkoutSchema = z.object({
     .max(120, "City / district is too long.")
     .optional()
     .or(z.literal("")),
+  deliveryZone: z.enum(DELIVERY_ZONES).default("INSIDE_DHAKA"),
   customerPostalCode: z
     .string()
     .trim()
@@ -133,6 +136,7 @@ export const adminCheckoutPreviewSchema = z.object({
     .array(checkoutItem)
     .min(1, "Add at least one product.")
     .max(100),
+  deliveryZone: z.enum(DELIVERY_ZONES).default("INSIDE_DHAKA"),
   promoCode: z
     .string()
     .trim()

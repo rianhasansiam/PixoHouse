@@ -2,6 +2,7 @@ import { readApiData } from "@/features/http/api-envelope";
 import type { OrderDetail } from "@/features/orders/api";
 
 export type CheckoutPaymentMethod = "CASH_ON_DELIVERY" | "ONLINE";
+export type DeliveryZone = "INSIDE_DHAKA" | "OUTSIDE_DHAKA";
 
 export type CheckoutItemInput = {
   productId: string;
@@ -34,6 +35,7 @@ export type CheckoutSummary = {
   taxRate: number;
   freeShippingThreshold: number;
   shippingFee: number;
+  isOutsideDhaka: boolean;
   isFreeShippingApplied: boolean;
   currency: string;
 };
@@ -60,6 +62,7 @@ export type CheckoutPreview = {
 
 export type PreviewRequest = {
   items?: CheckoutItemInput[];
+  deliveryZone?: DeliveryZone;
   promoCode?: string | null;
 };
 
@@ -88,6 +91,7 @@ export type PlaceOrderRequest = {
   // never sends (or can override) it.
   customerAddress: string;
   customerCity?: string;
+  deliveryZone: DeliveryZone;
   customerPostalCode?: string;
   customerNote?: string;
   paymentMethod: CheckoutPaymentMethod;

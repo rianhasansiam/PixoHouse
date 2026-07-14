@@ -114,7 +114,7 @@ export default function StorePricingForm({
 
           <div className="grid gap-3 md:grid-cols-3">
             <Field
-              label="Standard delivery fee"
+              label="Delivery inside Dhaka"
               icon={<Truck className="h-3.5 w-3.5" />}
               required
             >
@@ -135,7 +135,7 @@ export default function StorePricingForm({
             </Field>
 
             <Field
-              label="Express delivery fee"
+              label="Delivery outside Dhaka"
               icon={<Truck className="h-3.5 w-3.5" />}
               required
             >

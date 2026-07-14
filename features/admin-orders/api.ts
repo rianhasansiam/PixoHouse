@@ -5,6 +5,7 @@ import type {
   CheckoutPreview,
   CheckoutPromo,
   CheckoutSummary,
+  DeliveryZone,
 } from "@/features/checkout/api";
 import type { OrderDetail } from "@/features/orders/api";
 import {
@@ -268,6 +269,7 @@ export type AdminOrderDraft = {
   customerEmail: string;
   customerAddress: string;
   customerCity: string;
+  deliveryZone: DeliveryZone;
   customerPostalCode: string;
   customerNote: string;
   promoCode: string;
@@ -283,6 +285,7 @@ export const EMPTY_ADMIN_ORDER_DRAFT: AdminOrderDraft = {
   customerEmail: "",
   customerAddress: "",
   customerCity: "",
+  deliveryZone: "INSIDE_DHAKA",
   customerPostalCode: "",
   customerNote: "",
   promoCode: "",
@@ -375,7 +378,7 @@ export async function fetchAllAdminOrderCustomers(): Promise<
 }
 
 export async function previewAdminOrder(
-  body: Pick<AdminOrderRequest, "items" | "promoCode">,
+  body: Pick<AdminOrderRequest, "items" | "deliveryZone" | "promoCode">,
 ): Promise<CheckoutPreview> {
   const response = await fetch("/api/admin/orders/preview", {
     method: "POST",

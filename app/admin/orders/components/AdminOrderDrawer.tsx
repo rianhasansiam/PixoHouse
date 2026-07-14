@@ -319,6 +319,21 @@ export default function AdminOrderDrawer({
                     />
                   </label>
                   <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">Delivery area *</span>
+                    <select
+                      value={draft.deliveryZone}
+                      onChange={(event) => onDraftChange((current) => ({
+                        ...current,
+                        deliveryZone: event.target.value as typeof current.deliveryZone,
+                      }))}
+                      disabled={locked}
+                      className={inputClass}
+                    >
+                      <option value="INSIDE_DHAKA">Delivery inside Dhaka</option>
+                      <option value="OUTSIDE_DHAKA">Delivery outside Dhaka</option>
+                    </select>
+                  </label>
+                  <label className="block space-y-1.5">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">Postal code</span>
                     <input
                       value={draft.customerPostalCode}
@@ -489,7 +504,7 @@ export default function AdminOrderDrawer({
                   <div className="mt-4 space-y-2 text-sm">
                     <div className="flex justify-between text-gray-600"><span>Products</span><span>{formatCurrency(preview.summary.subtotal)}</span></div>
                     {preview.summary.discount > 0 && <div className="flex justify-between text-emerald-700"><span>Discount</span><span>-{formatCurrency(preview.summary.discount)}</span></div>}
-                    <div className="flex justify-between text-gray-600"><span>Delivery</span><span>{preview.summary.shipping === 0 ? "FREE" : formatCurrency(preview.summary.shipping)}</span></div>
+                    <div className="flex justify-between text-gray-600"><span>{preview.summary.isOutsideDhaka ? "Delivery outside Dhaka" : "Delivery inside Dhaka"}</span><span>{preview.summary.shipping === 0 ? "FREE" : formatCurrency(preview.summary.shipping)}</span></div>
                     {preview.summary.tax > 0 && <div className="flex justify-between text-gray-600"><span>Tax</span><span>{formatCurrency(preview.summary.tax)}</span></div>}
                     <div className="flex justify-between border-t border-brand-border pt-2 text-base font-bold text-gray-900"><span>Total</span><span>{formatCurrency(preview.summary.total)}</span></div>
                     {advancePayment > 0 && <>

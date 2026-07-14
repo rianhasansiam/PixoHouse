@@ -10,9 +10,11 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Truck,
   User,
 } from "lucide-react";
 
+import type { DeliveryZone } from "@/features/checkout/api";
 import { cn } from "@/lib/utils";
 
 export type CustomerFormState = {
@@ -21,6 +23,7 @@ export type CustomerFormState = {
   customerEmail: string;
   customerAddress: string;
   customerCity: string;
+  deliveryZone: DeliveryZone;
   customerPostalCode: string;
   customerNote: string;
 };
@@ -136,6 +139,26 @@ export default function CustomerForm({
           autoComplete="address-level2"
           disabled={isProfileLoading}
         />
+        <label className="block">
+          <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+            <span className="text-brand-text-muted">
+              <Truck className="h-4 w-4" />
+            </span>
+            Delivery area
+            <span className="text-red-500">*</span>
+          </span>
+          <select
+            value={form.deliveryZone}
+            onChange={(event) =>
+              onChange("deliveryZone", event.target.value as DeliveryZone)
+            }
+            disabled={isProfileLoading}
+            className="h-11 w-full rounded-xl border border-brand-border bg-white px-3 text-sm text-gray-900 outline-none transition-all duration-200 focus-visible:border-brand-red focus-visible:ring-4 focus-visible:ring-brand-red/30 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="INSIDE_DHAKA">Delivery inside Dhaka</option>
+            <option value="OUTSIDE_DHAKA">Delivery outside Dhaka</option>
+          </select>
+        </label>
         <Field
           icon={<Hash className="h-4 w-4" />}
           label="Postal code"

@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     const quote = await previewCheckout(null, {
       items: parsed.data.items,
+      deliveryZone: parsed.data.deliveryZone,
       promoCode: parsed.data.promoCode,
     });
     return ok(quote);

@@ -41,6 +41,7 @@ const EMPTY_FORM: CustomerFormState = {
   customerEmail: "",
   customerAddress: "",
   customerCity: "",
+  deliveryZone: "INSIDE_DHAKA",
   customerPostalCode: "",
   customerNote: "",
 };
@@ -211,6 +212,7 @@ function CheckoutPageInner() {
       try {
         const next = await fetchCheckoutPreview({
           items: buildItemsPayload(),
+          deliveryZone: form.deliveryZone,
           promoCode: appliedPromo,
         });
         if (ignore) return;
@@ -246,7 +248,14 @@ function CheckoutPageInner() {
     return () => {
       ignore = true;
     };
-  }, [authStatus, source, appliedPromo, previewToken, buildItemsPayload]);
+  }, [
+    authStatus,
+    source,
+    appliedPromo,
+    previewToken,
+    buildItemsPayload,
+    form.deliveryZone,
+  ]);
 
   const handleApplyPromo = () => {
     const trimmed = promoCode.trim().toUpperCase();
@@ -319,6 +328,7 @@ function CheckoutPageInner() {
         // with the authenticated account's email.
         customerAddress: form.customerAddress.trim(),
         customerCity: form.customerCity.trim() || undefined,
+        deliveryZone: form.deliveryZone,
         customerPostalCode: form.customerPostalCode.trim() || undefined,
         customerNote: form.customerNote.trim() || undefined,
         paymentMethod,

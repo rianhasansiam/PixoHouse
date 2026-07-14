@@ -300,6 +300,7 @@ export default function AdminOrdersPage() {
     try {
       const quote = await previewAdminOrder({
         items: orderDraft.items,
+        deliveryZone: orderDraft.deliveryZone,
         promoCode: orderDraft.promoCode.trim() || null,
       });
       setOrderPreview(quote);
@@ -337,6 +338,7 @@ export default function AdminOrdersPage() {
         customerEmail: orderDraft.customerEmail.trim(),
         customerAddress: orderDraft.customerAddress.trim(),
         customerCity: orderDraft.customerCity.trim(),
+        deliveryZone: orderDraft.deliveryZone,
         customerPostalCode: orderDraft.customerPostalCode.trim(),
         customerNote: orderDraft.customerNote.trim(),
         paymentMethod: orderDraft.paymentMethod,

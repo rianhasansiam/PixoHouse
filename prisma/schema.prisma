@@ -517,9 +517,9 @@ model PromoCodeUsage {
 model StoreSettings {
   id                    String  @id @default(cuid())
   taxRate               Decimal @default(0.05) @db.Decimal(5, 4) // 0..1, e.g. 0.05 = 5%
-  standardShippingFee   Decimal @default(120) @db.Decimal(10, 2)
+  standardShippingFee   Decimal @default(120) @db.Decimal(10, 2) // Delivery fee inside Dhaka
   freeShippingThreshold Decimal @default(50000) @db.Decimal(10, 2) // BDT subtotal at which delivery is free
-  expressShippingFee    Decimal @default(250) @db.Decimal(10, 2)
+  expressShippingFee    Decimal @default(250) @db.Decimal(10, 2) // Delivery fee outside Dhaka
   currency              String  @default("BDT")
 
   createdAt DateTime @default(now())

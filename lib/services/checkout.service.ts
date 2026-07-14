@@ -369,14 +369,18 @@ type CheckoutSummary = {
   taxRate: number;
   freeShippingThreshold: number;
   shippingFee: number;
+  isOutsideDhaka: boolean;
   isFreeShippingApplied: boolean;
   currency: string;
 };
+
+type DeliveryZone = "INSIDE_DHAKA" | "OUTSIDE_DHAKA";
 
 function summarize(
   lines: PricedLine[],
   promo: PromoApplication,
   settings: StoreSettingsSnapshot,
+  deliveryZone: DeliveryZone,
 ): CheckoutSummary {
   const subtotal = sumDecimals(lines.map((line) => line.lineTotal));
   const totalSavings = sumDecimals(
@@ -396,9 +400,13 @@ function summarize(
     subtotal.isZero() ||
     (freeShippingThreshold.greaterThan(0) &&
       greaterThanOrEqual(afterDiscount, freeShippingThreshold));
+  const outsideDhaka = deliveryZone === "OUTSIDE_DHAKA";
+  const shippingFee = outsideDhaka
+    ? settings.expressShippingFee
+    : settings.standardShippingFee;
   const shipping = isFreeShipping
     ? toDecimal(0)
-    : toDecimal(settings.standardShippingFee);
+    : toDecimal(shippingFee);
 
   const tax = percentOf(afterDiscount, multiply(settings.taxRate, 100));
   const total = toDecimal(round2(afterDiscount)).plus(shipping).plus(
@@ -414,7 +422,8 @@ function summarize(
     total: round2(total),
     taxRate: settings.taxRate,
     freeShippingThreshold: settings.freeShippingThreshold,
-    shippingFee: settings.standardShippingFee,
+    shippingFee,
+    isOutsideDhaka: outsideDhaka,
     isFreeShippingApplied: isFreeShipping,
     currency: settings.currency,
   };
@@ -451,7 +460,7 @@ export async function previewCheckout(
   const settings = settingsToSnapshot(await getStoreSettings());
   const subtotal = sumDecimals(lines.map((line) => line.lineTotal));
   const promo = await applyPromoCode(input.promoCode, subtotal);
-  const summary = summarize(lines, promo, settings);
+  const summary = summarize(lines, promo, settings, input.deliveryZone);
 
   return {
     items: lines.map((line) => ({
@@ -514,7 +523,7 @@ async function placeOrderInternal(
     throw new CheckoutError(409, promo.reason);
   }
 
-  const summary = summarize(lines, promo, settings);
+  const summary = summarize(lines, promo, settings, input.deliveryZone);
   const advancePayment = toDecimal(round2(options.advancePayment ?? 0));
   const totalAmount = toDecimal(summary.total);
   if (advancePayment.isNegative()) {
