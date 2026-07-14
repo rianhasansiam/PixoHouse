@@ -283,6 +283,13 @@ function drawTotals(doc: Doc, y: number, order: OrderDetail): number {
   if (order.taxAmount > 0) {
     rows.push(["Tax", formatBDT(order.taxAmount)]);
   }
+  if (order.advancePayment > 0) {
+    rows.push(["Advance payment", `- ${formatBDT(order.advancePayment)}`]);
+    rows.push([
+      "Balance due",
+      formatBDT(Math.max(order.totalAmount - order.advancePayment, 0)),
+    ]);
+  }
 
   const rowH = 6.2;
   const grandH = 12;

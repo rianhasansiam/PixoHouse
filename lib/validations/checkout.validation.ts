@@ -107,5 +107,44 @@ export const checkoutSchema = z.object({
   clearCart: z.boolean().default(true),
 });
 
+/**
+ * Body for an admin-created order. Admins choose a registered customer or a
+ * guest customer and explicitly select products, so this schema requires at
+ * least one item and never falls back to a saved cart.
+ */
+export const adminCheckoutSchema = checkoutSchema.extend({
+  // Empty means a guest / walk-in customer. A non-empty value is verified
+  // server-side to ensure it belongs to a regular customer account.
+  customerId: z.string().trim().min(1).optional().or(z.literal("")),
+  items: z
+    .array(checkoutItem)
+    .min(1, "Add at least one product.")
+    .max(100),
+  advancePayment: z
+    .number({ error: "Advance payment must be a number." })
+    .finite()
+    .nonnegative("Advance payment cannot be negative.")
+    .default(0),
+});
+
+/** Read-only server-side quote for the admin order form. */
+export const adminCheckoutPreviewSchema = z.object({
+  items: z
+    .array(checkoutItem)
+    .min(1, "Add at least one product.")
+    .max(100),
+  promoCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(40)
+    .optional()
+    .nullable(),
+});
+
 export type CheckoutPreviewInput = z.infer<typeof checkoutPreviewSchema>;
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
+export type AdminCheckoutInput = z.infer<typeof adminCheckoutSchema>;
+export type AdminCheckoutPreviewInput = z.infer<
+  typeof adminCheckoutPreviewSchema
+>;

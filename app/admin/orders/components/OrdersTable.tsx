@@ -137,6 +137,18 @@ export default function OrdersTable({
                           -{formatCurrency(order.discountAmount)} discount
                         </p>
                       )}
+                      {order.advancePayment > 0 && (
+                        <>
+                          <p className="text-xs text-emerald-700">
+                            {formatCurrency(order.advancePayment)} advance paid
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatCurrency(
+                              Math.max(order.totalAmount - order.advancePayment, 0),
+                            )} due
+                          </p>
+                        </>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span

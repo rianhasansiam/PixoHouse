@@ -63,6 +63,7 @@ export type OrderDetail = {
   discountAmount: number;
   taxAmount: number;
   totalAmount: number;
+  advancePayment: number;
   promoCode: string | null;
 
   status: OrderStatus;
@@ -105,6 +106,7 @@ export type MyOrderSummary = {
   id: string;
   orderNumber: string;
   totalAmount: number;
+  advancePayment: number;
   status: OrderStatus;
   paymentMethod: OrderPaymentMethod;
   paymentStatus: PaymentStatus;

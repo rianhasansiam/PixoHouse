@@ -9,6 +9,7 @@ import {
   setActivity,
   setCapital,
   setCapitalCostSummary,
+  setProductCost,
   setCapitalCostOverview,
   setCapitalCostsError,
   setCapitalCostsLoading,
@@ -30,11 +31,16 @@ import {
   fromDateTimeLocal,
   parsePositiveAmount,
   addCapital,
+  addProductCosts,
+  fetchProductCostOptions,
+  removeProductCost,
   updateOtherCost,
   type CapitalFormState,
   type OtherCostFilters as Filters,
   type OtherCostFormState,
   type OtherCostRow,
+  type ProductCostItem,
+  type ProductCostOption,
 } from "@/features/admin-capital-costs/api";
 import {
   confirmMajorAction,
@@ -46,6 +52,7 @@ import { useAnimatedRemoval } from "@/hooks/useAnimatedRemoval";
 import CapitalCostSummaryCards from "./components/CapitalCostSummaryCards";
 import CapitalForm from "./components/CapitalForm";
 import ProductCostCard from "./components/ProductCostCard";
+import ProductCostPickerDrawer from "./components/ProductCostPickerDrawer";
 import OtherCostFilters from "./components/OtherCostFilters";
 import OtherCostFormDrawer from "./components/OtherCostFormDrawer";
 import OtherCostsTable from "./components/OtherCostsTable";
@@ -78,6 +85,15 @@ export default function AdminCapitalCostsPage() {
   const [isSavingCapital, setIsSavingCapital] = useState(false);
   const [capitalError, setCapitalError] = useState<string | null>(null);
   const [capitalNote, setCapitalNote] = useState<string | null>(null);
+
+  // Product-cost picker
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [productOptions, setProductOptions] = useState<ProductCostOption[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [isLoadingProductOptions, setIsLoadingProductOptions] = useState(false);
+  const [isSavingProductCosts, setIsSavingProductCosts] = useState(false);
+  const [productPickerError, setProductPickerError] = useState<string | null>(null);
+  const [busyProductCostId, setBusyProductCostId] = useState<string | null>(null);
 
   // Other-cost filters
   const [filters, setFilters] = useState<Filters>(EMPTY_OTHER_COST_FILTERS);
@@ -153,6 +169,7 @@ export default function AdminCapitalCostsPage() {
       const overview = await fetchCapitalCostOverview();
       dispatch(setCapitalCostSummary(overview.summary));
       dispatch(setCapital(overview.capital));
+      dispatch(setProductCost(overview.productCost));
       dispatch(setActivity(overview.activity));
       if (!filterActive) {
         setFilteredTotal(overview.otherCosts.total);
@@ -196,6 +213,90 @@ export default function AdminCapitalCostsPage() {
       notifyActionError(mutation, "Failed to add capital.");
     } finally {
       setIsSavingCapital(false);
+    }
+  };
+
+  /* ----------------------- Product-cost selections ------------------- */
+
+  const openProductPicker = () => {
+    setProductPickerOpen(true);
+    setSelectedProductIds([]);
+    setProductPickerError(null);
+    setIsLoadingProductOptions(true);
+
+    void fetchProductCostOptions()
+      .then((options) => setProductOptions(options))
+      .catch((loadError) => {
+        const message =
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load products.";
+        setProductPickerError(message);
+      })
+      .finally(() => setIsLoadingProductOptions(false));
+  };
+
+  const closeProductPicker = (force = false) => {
+    if (isSavingProductCosts && !force) return;
+    setProductPickerOpen(false);
+    setSelectedProductIds([]);
+    setProductPickerError(null);
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId],
+    );
+  };
+
+  const handleProductCostSubmit = async () => {
+    setProductPickerError(null);
+    try {
+      if (selectedProductIds.length === 0) {
+        throw new Error("Select at least one product.");
+      }
+
+      setIsSavingProductCosts(true);
+      const updated = await addProductCosts(selectedProductIds);
+      dispatch(setProductCost(updated));
+      await syncSummary();
+      closeProductPicker(true);
+      notifyActionSuccess(
+        `${selectedProductIds.length} product cost${selectedProductIds.length === 1 ? "" : "s"} added.`,
+      );
+    } catch (mutation) {
+      const message =
+        mutation instanceof Error
+          ? mutation.message
+          : "Failed to add selected product costs.";
+      setProductPickerError(message);
+      notifyActionError(mutation, "Failed to add selected product costs.");
+    } finally {
+      setIsSavingProductCosts(false);
+    }
+  };
+
+  const handleRemoveProductCost = async (item: ProductCostItem) => {
+    const confirmed = await confirmMajorAction({
+      title: `Remove "${item.productName}"?`,
+      description:
+        "This product will no longer be included in the product-cost total.",
+      confirmLabel: "Remove",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setBusyProductCostId(item.id);
+    try {
+      await removeProductCost(item.id);
+      await syncSummary();
+      notifyActionSuccess("Product cost removed.");
+    } catch (mutation) {
+      notifyActionError(mutation, "Failed to remove product cost.");
+    } finally {
+      setBusyProductCostId(null);
     }
   };
 
@@ -357,8 +458,8 @@ export default function AdminCapitalCostsPage() {
             Capital &amp; Cost Tracker
           </h1>
           <p className="text-xs text-gray-500">
-            Track business capital, inventory cost, and manual costs in one
-            place.
+            Track business capital, selected inventory costs, and manual costs
+            in one place.
           </p>
         </div>
         <button
@@ -430,6 +531,9 @@ export default function AdminCapitalCostsPage() {
           productCost={productCost}
           currency={CURRENCY}
           isLoading={isLoading}
+          busyId={busyProductCostId}
+          onAdd={openProductPicker}
+          onRemove={(item) => void handleRemoveProductCost(item)}
         />
       </div>
 
@@ -507,6 +611,21 @@ export default function AdminCapitalCostsPage() {
         error={costDrawerError}
         onClose={closeCostDrawer}
         onSubmit={handleCostSubmit}
+      />
+      <ProductCostPickerDrawer
+        open={productPickerOpen}
+        options={productOptions}
+        selectedProductIds={selectedProductIds}
+        existingProductIds={(productCost?.items ?? []).map(
+          (item) => item.productId,
+        )}
+        currency={CURRENCY}
+        isLoading={isLoadingProductOptions}
+        isSubmitting={isSavingProductCosts}
+        error={productPickerError}
+        onToggle={toggleProductSelection}
+        onClose={closeProductPicker}
+        onSubmit={() => void handleProductCostSubmit()}
       />
     </section>
   );

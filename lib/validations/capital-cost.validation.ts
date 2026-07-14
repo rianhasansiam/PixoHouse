@@ -42,6 +42,15 @@ export const addCapitalSchema = z.object({
   note,
 });
 
+/** Body for POST /api/admin/capital-costs/product-costs. */
+export const addProductCostsSchema = z.object({
+  productIds: z
+    .array(z.string().trim().min(1))
+    .min(1, "Select at least one product.")
+    .max(100, "You can add at most 100 products at once.")
+    .transform((ids) => Array.from(new Set(ids))),
+});
+
 /** Body for `POST /api/admin/capital-costs/other-costs`. */
 export const createOtherCostSchema = z.object({
   amount: money,
@@ -86,6 +95,7 @@ export const otherCostQuerySchema = z.object({
 });
 
 export type AddCapitalInput = z.infer<typeof addCapitalSchema>;
+export type AddProductCostsInput = z.infer<typeof addProductCostsSchema>;
 export type CreateOtherCostInput = z.infer<typeof createOtherCostSchema>;
 export type UpdateOtherCostInput = z.infer<typeof updateOtherCostSchema>;
 export type OtherCostQueryInput = z.infer<typeof otherCostQuerySchema>;

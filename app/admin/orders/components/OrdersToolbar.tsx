@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, Search } from "lucide-react";
+import { PackagePlus, RotateCcw, Search } from "lucide-react";
 
 import { LoadingSpinner } from "@/components/ui/loading";
 import {
@@ -25,6 +25,7 @@ export default function OrdersToolbar({
   onStatusChange,
   onPaymentChange,
   onRefresh,
+  onCreate,
 }: {
   query: string;
   statusFilter: StatusFilter;
@@ -36,6 +37,7 @@ export default function OrdersToolbar({
   onStatusChange: (value: StatusFilter) => void;
   onPaymentChange: (value: PaymentFilter) => void;
   onRefresh: () => void;
+  onCreate: () => void;
 }) {
   return (
     <div className="rounded-2xl border border-brand-border bg-brand-white p-4 shadow-sm sm:p-5">
@@ -79,20 +81,30 @@ export default function OrdersToolbar({
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={isLoading}
-          aria-busy={isLoading}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-border px-3 text-sm font-semibold text-foreground transition hover:bg-brand-light-bg"
-        >
-          {isLoading ? (
-            <LoadingSpinner decorative size="sm" />
-          ) : (
-            <RotateCcw className="h-4 w-4" />
-          )}
-          {isLoading ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isLoading}
+            aria-busy={isLoading}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-brand-border px-3 text-sm font-semibold text-foreground transition hover:bg-brand-light-bg"
+          >
+            {isLoading ? (
+              <LoadingSpinner decorative size="sm" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-red px-4 text-sm font-semibold text-brand-white transition hover:bg-brand-red-hover"
+          >
+            <PackagePlus className="h-4 w-4" />
+            Place order
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 flex items-center justify-between text-xs text-gray-500">

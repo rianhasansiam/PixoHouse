@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Boxes,
   History,
   Pencil,
   PlusCircle,
@@ -18,8 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Read-only feed of recent actions on the Capital & Cost page: capital
- * changes (with their note) and manual-cost create/update/delete events.
+ * Read-only feed of recent capital, product-cost, and manual-cost changes.
  */
 
 const KIND_META: Record<
@@ -40,6 +40,16 @@ const KIND_META: Record<
     label: "Capital added",
     icon: Wallet,
     tone: "bg-emerald-50 text-emerald-600",
+  },
+  PRODUCT_COST_ADDED: {
+    label: "Product cost added",
+    icon: Boxes,
+    tone: "bg-brand-light-bg text-brand-red",
+  },
+  PRODUCT_COST_REMOVED: {
+    label: "Product cost removed",
+    icon: Trash2,
+    tone: "bg-rose-50 text-rose-600",
   },
   COST_CREATED: {
     label: "Cost added",

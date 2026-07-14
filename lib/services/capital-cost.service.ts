@@ -14,6 +14,7 @@ import {
 import { ServiceError } from "@/lib/services/service-error";
 import type {
   AddCapitalInput,
+  AddProductCostsInput,
   CreateOtherCostInput,
   OtherCostQueryInput,
   UpdateOtherCostInput,
@@ -22,8 +23,8 @@ import type {
 /**
  * Admin Capital & Cost Tracker — DB logic.
  *
- * Fully ISOLATED from order/revenue/product mutations. The only place it
- * touches existing data is a READ-ONLY derivation of "product cost"
+ * Fully isolated from order and revenue mutations. It records only the
+ * admin's product-cost selections, then reads product data to calculate
  * (buyingPrice × on-hand stock) used purely for display. It never writes
  * to Product/Order/etc. and never exposes `buyingPrice` to customers
  * (these endpoints are admin-guarded).
@@ -66,6 +67,30 @@ export type ProductCostSummary = {
   totalProductCost: number;
   productCount: number;
   totalUnits: number;
+  items: ProductCostItem[];
+};
+
+export type ProductCostItem = {
+  /** ID of the admin's explicit product-cost selection. */
+  id: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  status: "ACTIVE" | "INACTIVE";
+  buyingPrice: number;
+  totalUnits: number;
+  totalCost: number;
+  selectedAt: string;
+};
+
+export type ProductCostOption = {
+  id: string;
+  productCode: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+  buyingPrice: number;
+  totalUnits: number;
+  totalCost: number;
 };
 
 export type CapitalCostSummary = {
@@ -80,6 +105,8 @@ export type CapitalCostActivityKind =
   | "CAPITAL_SET"
   | "CAPITAL_UPDATED"
   | "CAPITAL_ADDED"
+  | "PRODUCT_COST_ADDED"
+  | "PRODUCT_COST_REMOVED"
   | "COST_CREATED"
   | "COST_UPDATED"
   | "COST_DELETED";
@@ -313,7 +340,7 @@ export async function addCapital(
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Product cost (READ-ONLY derivation from the catalog)                      */
+/*  Product costs (explicit admin selections)                                 */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -323,33 +350,208 @@ export async function addCapital(
  * reports the full catalog count; zero-stock products still count as
  * products even though they contribute no units or inventory cost.
  */
-export async function getProductCost(): Promise<ProductCostSummary> {
+type CostProduct = {
+  id: string;
+  productCode: string;
+  name: string;
+  status: string;
+  buyingPrice: Prisma.Decimal;
+  variants: { stock: number }[];
+};
+
+function productInventoryValue(product: CostProduct): {
+  totalUnits: number;
+  totalCost: number;
+} {
+  const totalUnits = product.variants.reduce(
+    (sum, variant) => sum + variant.stock,
+    0,
+  );
+
+  return {
+    totalUnits,
+    totalCost: round2(multiply(product.buyingPrice, Math.max(0, totalUnits))),
+  };
+}
+
+function productStatus(status: string): "ACTIVE" | "INACTIVE" {
+  return status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+}
+
+function serializeProductCost(row: {
+  id: string;
+  createdAt: Date;
+  product: CostProduct;
+}): ProductCostItem {
+  const { totalUnits, totalCost } = productInventoryValue(row.product);
+
+  return {
+    id: row.id,
+    productId: row.product.id,
+    productCode: row.product.productCode,
+    productName: row.product.name,
+    status: productStatus(row.product.status),
+    buyingPrice: toNumber(row.product.buyingPrice),
+    totalUnits,
+    totalCost,
+    selectedAt: row.createdAt.toISOString(),
+  };
+}
+
+/** List catalog products as candidates for the admin-only picker. */
+export async function listProductCostOptions(): Promise<ProductCostOption[]> {
   const products = await prisma.product.findMany({
+    orderBy: [{ name: "asc" }, { productCode: "asc" }],
     select: {
+      id: true,
+      productCode: true,
+      name: true,
+      status: true,
       buyingPrice: true,
       variants: { select: { stock: true } },
     },
   });
 
-  let totalCost = toDecimal(0);
-  let totalUnits = 0;
+  return products.map((product) => {
+    const { totalUnits, totalCost } = productInventoryValue(product);
+    return {
+      id: product.id,
+      productCode: product.productCode,
+      name: product.name,
+      status: productStatus(product.status),
+      buyingPrice: toNumber(product.buyingPrice),
+      totalUnits,
+      totalCost,
+    };
+  });
+}
 
-  for (const product of products) {
-    const units = product.variants.reduce(
-      (sum, variant) => sum + variant.stock,
-      0,
-    );
-    if (units <= 0) continue;
+/**
+ * Return costs for products that an admin explicitly added to this page.
+ * Catalog products do not contribute a cost until selected.
+ */
+export async function getProductCost(): Promise<ProductCostSummary> {
+  const rows = await prisma.adminProductCost.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      createdAt: true,
+      product: {
+        select: {
+          id: true,
+          productCode: true,
+          name: true,
+          status: true,
+          buyingPrice: true,
+          variants: { select: { stock: true } },
+        },
+      },
+    },
+  });
 
-    totalCost = totalCost.plus(multiply(product.buyingPrice, units));
-    totalUnits += units;
+  const items = rows.map(serializeProductCost);
+  return {
+    totalProductCost: round2(sumDecimals(items.map((item) => item.totalCost))),
+    productCount: items.length,
+    totalUnits: items.reduce((sum, item) => sum + item.totalUnits, 0),
+    items,
+  };
+}
+
+/** Add one or more product-cost cards, ignoring products already selected. */
+export async function addProductCosts(
+  input: AddProductCostsInput,
+  actor?: ActivityActor,
+): Promise<ProductCostSummary> {
+  const products = await prisma.product.findMany({
+    where: { id: { in: input.productIds } },
+    select: {
+      id: true,
+      productCode: true,
+      name: true,
+      status: true,
+      buyingPrice: true,
+      variants: { select: { stock: true } },
+    },
+  });
+
+  if (products.length !== input.productIds.length) {
+    throw new ServiceError(404, "One or more selected products no longer exist.");
   }
 
-  return {
-    totalProductCost: round2(totalCost),
-    productCount: products.length,
-    totalUnits,
-  };
+  const existing = await prisma.adminProductCost.findMany({
+    where: { productId: { in: input.productIds } },
+    select: { productId: true },
+  });
+  const existingIds = new Set(existing.map((row) => row.productId));
+  const productsToAdd = products.filter((product) => !existingIds.has(product.id));
+
+  if (productsToAdd.length > 0) {
+    await prisma.adminProductCost.createMany({
+      data: productsToAdd.map((product) => ({ productId: product.id })),
+      skipDuplicates: true,
+    });
+
+    await Promise.all(
+      productsToAdd.map((product) => {
+        const { totalCost } = productInventoryValue(product);
+        return logActivity({
+          type: "PRODUCT_COST_ADDED",
+          description: `Added product cost for "${product.name}"`,
+          amount: totalCost,
+          note: product.productCode,
+          entityId: product.id,
+          actor,
+        });
+      }),
+    );
+  }
+
+  return getProductCost();
+}
+
+/** Remove a product from the selected product-cost cards. */
+export async function removeProductCost(
+  id: string,
+  actor?: ActivityActor,
+): Promise<{ id: string }> {
+  try {
+    const row = await prisma.adminProductCost.delete({
+      where: { id },
+      select: {
+        id: true,
+        createdAt: true,
+        product: {
+          select: {
+            id: true,
+            productCode: true,
+            name: true,
+            status: true,
+            buyingPrice: true,
+            variants: { select: { stock: true } },
+          },
+        },
+      },
+    });
+    const item = serializeProductCost(row);
+    await logActivity({
+      type: "PRODUCT_COST_REMOVED",
+      description: `Removed product cost for "${item.productName}"`,
+      amount: item.totalCost,
+      note: item.productCode,
+      entityId: row.id,
+      actor,
+    });
+    return { id };
+  } catch (error) {
+    if (
+      error instanceof PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      throw new ServiceError(404, "Selected product cost not found.");
+    }
+    throw error;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -528,7 +730,7 @@ export async function deleteOtherCost(
 /* -------------------------------------------------------------------------- */
 
 /**
- * One-shot snapshot for the page: capital, derived product cost, the
+ * One-shot snapshot for the page: capital, selected product costs, the
  * (unfiltered) other-cost list, and the headline summary numbers. All
  * money math flows through Decimal helpers and is rounded once at the end.
  */

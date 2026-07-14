@@ -92,7 +92,7 @@ export default function CapitalCostSummaryCards({
         hint={
           productCost
             ? `${productCost.productCount} products · ${productCost.totalUnits} units`
-            : "From product buying price"
+            : "Admin-selected products only"
         }
         loading={loading}
       />

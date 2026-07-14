@@ -68,6 +68,12 @@ const adminCapitalCostsSlice = createSlice({
     ) {
       state.summary = action.payload;
     },
+    setProductCost(
+      state,
+      action: PayloadAction<ProductCostSummary | null>,
+    ) {
+      state.productCost = action.payload;
+    },
     setActivity(state, action: PayloadAction<ActivityRow[]>) {
       state.activity = action.payload;
     },
@@ -102,6 +108,7 @@ export const {
   setCapitalCostOverview,
   setCapital,
   setCapitalCostSummary,
+  setProductCost,
   setActivity,
   setOtherCosts,
   upsertOtherCost,

@@ -621,6 +621,9 @@ async function buildCustomersReport(window: Window, limit: number) {
       where: {
         createdAt: { gte: window.from, lte: window.to },
         status: { not: "CANCELLED" },
+        // Guest orders contribute to sales and profit reports, but this is
+        // specifically an account-customer behaviour report.
+        userId: { not: null },
       },
       _sum: { totalAmount: true },
       _count: { _all: true },

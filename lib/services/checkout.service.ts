@@ -35,9 +35,8 @@ import type {
  *     start/end dates, min order, percent caps, usage limits).
  *   - stock is decremented atomically with `updateMany` + a stock
  *     guard so the last unit can't be sold to two carts at once.
- *   - every order is attached to the session userId (no anonymous
- *     orders); the route layer rejects unauthenticated requests with
- *     a 401 before reaching the service.
+ *   - customer checkout orders are attached to the signed-in user;
+ *     an admin-only path may record a guest order without an account.
  */
 
 export class CheckoutError extends ServiceError {
@@ -102,7 +101,7 @@ type ResolvedItems = {
  *   2. The user's persisted cart, when no items are supplied.
  */
 async function resolveItems(
-  userId: string,
+  userId: string | null,
   bodyItems: ResolvedItem[] | undefined,
 ): Promise<ResolvedItems> {
   if (bodyItems && bodyItems.length > 0) {
@@ -120,6 +119,13 @@ async function resolveItems(
       });
     }
     return { items: Array.from(merged.values()), fromCart: false };
+  }
+
+  if (!userId) {
+    throw new CheckoutError(
+      400,
+      "Guest orders must include at least one product.",
+    );
   }
 
   const cart = await prisma.cartItem.findMany({
@@ -436,7 +442,7 @@ function settingsToSnapshot(
  * adjusts items. Always trustworthy — pricing comes from the DB.
  */
 export async function previewCheckout(
-  userId: string,
+  userId: string | null,
   input: CheckoutPreviewInput,
 ) {
   const { items: resolved } = await resolveItems(userId, input.items);
@@ -475,7 +481,16 @@ const orderInclude = {
   items: true,
 } satisfies Prisma.OrderInclude;
 
-export async function placeOrder(userId: string, input: CheckoutInput) {
+type OrderPaymentOptions = {
+  /** Amount collected by an admin at order creation; not a discount. */
+  advancePayment?: number;
+};
+
+async function placeOrderInternal(
+  userId: string | null,
+  input: CheckoutInput,
+  options: OrderPaymentOptions = {},
+) {
   // Pay Now is intentionally disabled until the gateway is wired up.
   // Reject server-side too so a curious client can't bypass the UI lock.
   if (input.paymentMethod === "ONLINE") {
@@ -500,31 +515,48 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
   }
 
   const summary = summarize(lines, promo, settings);
-
-  // Email is identity-bound: always resolve it from the authenticated
-  // user's DB record, never from the request body. Even if the client
-  // tampers with the (disabled) email field via dev tools, the order
-  // is stamped with the account's real email.
-  const account = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true },
-  });
-  if (!account) {
-    throw new CheckoutError(
-      401,
-      "Your account could not be found. Please sign in again.",
-    );
+  const advancePayment = toDecimal(round2(options.advancePayment ?? 0));
+  const totalAmount = toDecimal(summary.total);
+  if (advancePayment.isNegative()) {
+    throw new CheckoutError(400, "Advance payment cannot be negative.");
   }
-  const accountEmail = account.email?.trim().toLowerCase();
-  if (!accountEmail) {
+  if (advancePayment.greaterThan(totalAmount)) {
     throw new CheckoutError(
       400,
-      "Your account is missing an email address. Please add one on your profile page before checking out.",
+      "Advance payment cannot exceed the order total.",
     );
+  }
+  const isPaidInFull =
+    totalAmount.greaterThan(0) && advancePayment.greaterThanOrEqualTo(totalAmount);
+
+  // Account-backed orders always use the account email, never a client
+  // override. Guest orders preserve the optional contact email entered by
+  // the admin so a receipt can still be sent where available.
+  let customerEmail: string | null;
+  if (userId) {
+    const account = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    if (!account) {
+      throw new CheckoutError(
+        401,
+        "Your account could not be found. Please sign in again.",
+      );
+    }
+    const accountEmail = account.email?.trim().toLowerCase();
+    if (!accountEmail) {
+      throw new CheckoutError(
+        400,
+        "Your account is missing an email address. Please add one on your profile page before checking out.",
+      );
+    }
+    customerEmail = accountEmail;
+  } else {
+    customerEmail = input.customerEmail?.trim().toLowerCase() || null;
   }
 
   const orderNumber = generateOrderNumber();
-  const customerEmail = accountEmail;
   const trimmedCity = input.customerCity?.trim();
   const customerCity = trimmedCity ? trimmedCity : null;
   const trimmedPostal = input.customerPostalCode?.trim();
@@ -572,6 +604,7 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
           discountAmount: summary.discount,
           taxAmount: summary.tax,
           totalAmount: summary.total,
+          advancePayment: round2(advancePayment),
           customerName: input.customerName,
           customerPhone: input.customerPhone,
           customerAddress: input.customerAddress,
@@ -580,7 +613,19 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
           customerPostalCode,
           customerNote,
           paymentMethod: input.paymentMethod,
+          paymentStatus: isPaidInFull ? "PAID" : "UNPAID",
           promoCode: promo?.ok ? promo.code : null,
+          ...(advancePayment.greaterThan(0)
+            ? {
+                payments: {
+                  create: {
+                    provider: "ADMIN_ADVANCE",
+                    amount: round2(advancePayment),
+                    status: "SUCCESS",
+                  },
+                },
+              }
+            : {}),
           items: {
             create: lines.map((line) => ({
               productId: line.productId,
@@ -631,7 +676,7 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
       }
 
       // Empty the cart on success when the items came from there.
-      if (fromCart && input.clearCart) {
+      if (fromCart && input.clearCart && userId) {
         await tx.cartItem.deleteMany({ where: { userId } });
       }
 
@@ -649,4 +694,45 @@ export async function placeOrder(userId: string, input: CheckoutInput) {
     }
     throw error;
   }
+}
+
+/** Place an account-backed customer checkout order. */
+export function placeOrder(userId: string, input: CheckoutInput) {
+  return placeOrderInternal(userId, input);
+}
+
+/**
+ * Place an order on behalf of a registered customer from the admin panel.
+ * The shared checkout path remains the sole source of truth for pricing,
+ * stock, promo usage, order-item cost snapshots, and all order totals.
+ */
+export async function placeOrderForCustomer(
+  customerId: string | null | undefined,
+  input: CheckoutInput,
+  options: OrderPaymentOptions = {},
+) {
+  if (!customerId) {
+    // Admin-created guest orders still receive the same authoritative prices,
+    // stock updates, promotion handling, and buying-cost snapshots.
+    return placeOrderInternal(null, { ...input, clearCart: false }, options);
+  }
+
+  const customer = await prisma.user.findUnique({
+    where: { id: customerId },
+    select: { id: true, role: true },
+  });
+
+  if (!customer) {
+    throw new CheckoutError(404, "Customer not found.");
+  }
+  if (customer.role !== "USER") {
+    throw new CheckoutError(
+      409,
+      "Orders can only be placed for customer accounts.",
+    );
+  }
+
+  // Admin-created orders always use explicitly chosen line items. Never
+  // mutate the customer's saved cart as a side effect of staff entry.
+  return placeOrderInternal(customer.id, { ...input, clearCart: false }, options);
 }

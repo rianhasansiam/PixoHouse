@@ -31,10 +31,33 @@ export type OtherCostRow = {
   updatedAt: string;
 };
 
+export type ProductCostItem = {
+  id: string;
+  productId: string;
+  productCode: string;
+  productName: string;
+  status: "ACTIVE" | "INACTIVE";
+  buyingPrice: number;
+  totalUnits: number;
+  totalCost: number;
+  selectedAt: string;
+};
+
+export type ProductCostOption = {
+  id: string;
+  productCode: string;
+  name: string;
+  status: "ACTIVE" | "INACTIVE";
+  buyingPrice: number;
+  totalUnits: number;
+  totalCost: number;
+};
+
 export type ProductCostSummary = {
   totalProductCost: number;
   productCount: number;
   totalUnits: number;
+  items: ProductCostItem[];
 };
 
 export type CapitalCostSummary = {
@@ -57,6 +80,8 @@ export type ActivityKind =
   | "CAPITAL_SET"
   | "CAPITAL_UPDATED"
   | "CAPITAL_ADDED"
+  | "PRODUCT_COST_ADDED"
+  | "PRODUCT_COST_REMOVED"
   | "COST_CREATED"
   | "COST_UPDATED"
   | "COST_DELETED";
@@ -269,6 +294,39 @@ function parseProductCost(entry: unknown): ProductCostSummary {
     totalProductCost: asNumber(item.totalProductCost),
     productCount: asNumber(item.productCount),
     totalUnits: asNumber(item.totalUnits),
+    items: Array.isArray(item.items) ? item.items.map(parseProductCostItem) : [],
+  };
+}
+
+function parseProductCostStatus(value: unknown): "ACTIVE" | "INACTIVE" {
+  return value === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+}
+
+function parseProductCostItem(entry: unknown): ProductCostItem {
+  const item = (entry ?? {}) as Partial<ProductCostItem>;
+  return {
+    id: asString(item.id),
+    productId: asString(item.productId),
+    productCode: asString(item.productCode),
+    productName: asString(item.productName),
+    status: parseProductCostStatus(item.status),
+    buyingPrice: asNumber(item.buyingPrice),
+    totalUnits: asNumber(item.totalUnits),
+    totalCost: asNumber(item.totalCost),
+    selectedAt: asString(item.selectedAt),
+  };
+}
+
+function parseProductCostOption(entry: unknown): ProductCostOption {
+  const item = (entry ?? {}) as Partial<ProductCostOption>;
+  return {
+    id: asString(item.id),
+    productCode: asString(item.productCode),
+    name: asString(item.name),
+    status: parseProductCostStatus(item.status),
+    buyingPrice: asNumber(item.buyingPrice),
+    totalUnits: asNumber(item.totalUnits),
+    totalCost: asNumber(item.totalCost),
   };
 }
 
@@ -287,6 +345,8 @@ const ACTIVITY_KINDS: readonly ActivityKind[] = [
   "CAPITAL_SET",
   "CAPITAL_UPDATED",
   "CAPITAL_ADDED",
+  "PRODUCT_COST_ADDED",
+  "PRODUCT_COST_REMOVED",
   "COST_CREATED",
   "COST_UPDATED",
   "COST_DELETED",
@@ -353,6 +413,48 @@ export async function fetchCapitalCostOverview(): Promise<CapitalCostOverview> {
     summary: parseSummary(data.summary),
     activity,
   };
+}
+
+export async function fetchProductCostOptions(): Promise<ProductCostOption[]> {
+  const response = await fetch("/api/admin/capital-costs/product-costs", {
+    method: "GET",
+    cache: "no-store",
+  });
+  const envelope = await parseEnvelope<unknown>(
+    response,
+    "Failed to load products.",
+  );
+  return Array.isArray(envelope.data)
+    ? envelope.data.map(parseProductCostOption)
+    : [];
+}
+
+export async function addProductCosts(
+  productIds: string[],
+): Promise<ProductCostSummary> {
+  const response = await fetch("/api/admin/capital-costs/product-costs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productIds }),
+    cache: "no-store",
+  });
+  const envelope = await parseEnvelope<unknown>(
+    response,
+    "Failed to add selected product costs.",
+  );
+  return parseProductCost(envelope.data);
+}
+
+export async function removeProductCost(id: string): Promise<{ id: string }> {
+  const response = await fetch(`/api/admin/capital-costs/product-costs/${id}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  const envelope = await parseEnvelope<{ id?: string }>(
+    response,
+    "Failed to remove product cost.",
+  );
+  return { id: asString(envelope.data?.id) || id };
 }
 
 export async function addCapital(body: {

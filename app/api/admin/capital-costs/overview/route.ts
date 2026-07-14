@@ -4,8 +4,8 @@ import { getCapitalCostOverview } from "@/lib/services/capital-cost.service";
 /**
  * GET /api/admin/capital-costs/overview
  *
- * Admin only. One-shot snapshot: capital, derived product cost, the
- * other-cost list, and the headline summary numbers.
+ * Admin only. One-shot snapshot: capital, explicitly selected product
+ * costs, the other-cost list, and the headline summary numbers.
  */
 export const GET = adminRoute({
   scope: "admin.capital-costs.overview.GET",

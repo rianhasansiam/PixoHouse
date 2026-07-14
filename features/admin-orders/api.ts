@@ -1,4 +1,12 @@
-import { readApiError } from "@/features/http/api-envelope";
+import { readApiData, readApiError } from "@/features/http/api-envelope";
+import type {
+  CheckoutItemInput,
+  CheckoutPaymentMethod,
+  CheckoutPreview,
+  CheckoutPromo,
+  CheckoutSummary,
+} from "@/features/checkout/api";
+import type { OrderDetail } from "@/features/orders/api";
 import {
   ORDER_STATUSES,
   STATUS_TRANSITIONS as ORDER_STATUS_TRANSITIONS,
@@ -25,6 +33,7 @@ export type AdminOrderRow = {
   deliveryCharge: number;
   discountAmount: number;
   totalAmount: number;
+  advancePayment: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -97,6 +106,7 @@ function parseRow(entry: unknown): AdminOrderRow {
     deliveryCharge: Number(item.deliveryCharge ?? 0),
     discountAmount: Number(item.discountAmount ?? 0),
     totalAmount: Number(item.totalAmount ?? 0),
+    advancePayment: Number(item.advancePayment ?? 0),
     status: parseOrderStatus(item.status),
     paymentMethod:
       item.paymentMethod === "ONLINE"
@@ -237,4 +247,170 @@ export function formatDateTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Admin order placement                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type AdminOrderCustomer = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+};
+
+export type AdminOrderDraft = {
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  customerAddress: string;
+  customerCity: string;
+  customerPostalCode: string;
+  customerNote: string;
+  promoCode: string;
+  advancePayment: string;
+  paymentMethod: CheckoutPaymentMethod;
+  items: Array<Required<CheckoutItemInput>>;
+};
+
+export const EMPTY_ADMIN_ORDER_DRAFT: AdminOrderDraft = {
+  customerId: "",
+  customerName: "",
+  customerPhone: "",
+  customerEmail: "",
+  customerAddress: "",
+  customerCity: "",
+  customerPostalCode: "",
+  customerNote: "",
+  promoCode: "",
+  advancePayment: "",
+  paymentMethod: "CASH_ON_DELIVERY",
+  items: [],
+};
+
+export type AdminOrderRequest = Omit<
+  AdminOrderDraft,
+  "promoCode" | "items" | "advancePayment"
+> & {
+  promoCode?: string | null;
+  items: CheckoutItemInput[];
+  advancePayment: number;
+};
+
+export type AdminPlacedOrderResult = {
+  order: OrderDetail;
+  summary: CheckoutSummary;
+  promo: CheckoutPromo;
+};
+
+type CustomerEnvelope = {
+  success?: boolean;
+  data?: unknown;
+  meta?: { totalPages?: unknown };
+};
+
+function parseAdminOrderCustomer(value: unknown): AdminOrderCustomer | null {
+  const row = value as Partial<AdminOrderCustomer> | null;
+  if (!row || typeof row.id !== "string" || row.id.length === 0) return null;
+
+  return {
+    id: row.id,
+    name: typeof row.name === "string" ? row.name : null,
+    email: typeof row.email === "string" ? row.email : null,
+    phone: typeof row.phone === "string" ? row.phone : null,
+    city: typeof row.city === "string" ? row.city : null,
+  };
+}
+
+/** Load all customer accounts for the admin order form. */
+export async function fetchAllAdminOrderCustomers(): Promise<
+  AdminOrderCustomer[]
+> {
+  let page = 1;
+  let totalPages = 1;
+  const customers: AdminOrderCustomer[] = [];
+
+  while (page <= totalPages) {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(API_PAGE_SIZE),
+      role: "USER",
+    });
+    const response = await fetch(`/api/admin/users?${params.toString()}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    let payload: unknown;
+    try {
+      payload = (await response.json()) as unknown;
+    } catch {
+      throw new Error("Failed to parse customers response.");
+    }
+    if (!response.ok) {
+      throw new Error(readApiError(payload, "Failed to load customers."));
+    }
+
+    const envelope = payload as CustomerEnvelope;
+    if (!envelope.success || !Array.isArray(envelope.data)) {
+      throw new Error("Customers API returned an invalid response.");
+    }
+
+    customers.push(
+      ...envelope.data
+        .map(parseAdminOrderCustomer)
+        .filter((customer): customer is AdminOrderCustomer => customer !== null),
+    );
+    const reportedPages = Number(envelope.meta?.totalPages ?? 1);
+    totalPages = Number.isInteger(reportedPages) && reportedPages > 0
+      ? reportedPages
+      : 1;
+    page += 1;
+  }
+
+  return customers;
+}
+
+export async function previewAdminOrder(
+  body: Pick<AdminOrderRequest, "items" | "promoCode">,
+): Promise<CheckoutPreview> {
+  const response = await fetch("/api/admin/orders/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  return readApiData<CheckoutPreview>(
+    response,
+    "Failed to calculate the order total.",
+  );
+}
+
+export async function placeAdminOrder(
+  body: AdminOrderRequest,
+): Promise<AdminPlacedOrderResult> {
+  const response = await fetch("/api/admin/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  return readApiData<AdminPlacedOrderResult>(
+    response,
+    "Failed to place the order.",
+  );
+}
+
+export async function fetchAdminOrderDetail(orderId: string): Promise<OrderDetail> {
+  const response = await fetch(`/api/admin/orders/${orderId}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  return readApiData<OrderDetail>(response, "Failed to load order details.");
 }

@@ -20,6 +20,7 @@ type AdminOrderRow = {
   deliveryCharge: number;
   discountAmount: number;
   totalAmount: number;
+  advancePayment: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;

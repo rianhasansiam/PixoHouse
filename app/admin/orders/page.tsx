@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
@@ -11,13 +11,26 @@ import {
 } from "@/store/slices/admin-orders.slice";
 import type { AppDispatch, RootState } from "@/store";
 import {
+  EMPTY_ADMIN_ORDER_DRAFT,
+  fetchAllAdminOrderCustomers,
   fetchAllAdminOrdersSnapshot,
+  placeAdminOrder,
   patchOrderStatus,
   patchPaymentStatus,
+  previewAdminOrder,
+  type AdminOrderCustomer,
+  type AdminOrderDraft,
   type AdminOrderRow,
   type OrderStatus,
   type PaymentStatus,
 } from "@/features/admin-orders/api";
+import {
+  fetchAllProductsSnapshot,
+  type AdminProduct,
+} from "@/features/admin-products/api";
+import type { CheckoutPreview } from "@/features/checkout/api";
+import { downloadOrderPdf } from "@/features/orders/pdf";
+import type { OrderDetail } from "@/features/orders/api";
 import {
   confirmMajorAction,
   notifyActionError,
@@ -25,11 +38,16 @@ import {
 } from "@/lib/admin-feedback";
 
 import OrderSummaryCards from "./components/OrderSummaryCards";
+import AdminOrderDrawer from "./components/AdminOrderDrawer";
 import OrdersToolbar from "./components/OrdersToolbar";
 import OrdersTable from "./components/OrdersTable";
 
 type StatusFilter = "ALL" | OrderStatus;
 type PaymentFilter = "ALL" | PaymentStatus;
+
+function freshOrderDraft(): AdminOrderDraft {
+  return { ...EMPTY_ADMIN_ORDER_DRAFT, items: [] };
+}
 
 export default function AdminOrdersPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -51,6 +69,19 @@ export default function AdminOrdersPage() {
   const [successNote, setSuccessNote] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [orderDrawerOpen, setOrderDrawerOpen] = useState(false);
+  const [orderCustomers, setOrderCustomers] = useState<AdminOrderCustomer[]>([]);
+  const [orderProducts, setOrderProducts] = useState<AdminProduct[]>([]);
+  const [isOrderCatalogLoading, setIsOrderCatalogLoading] = useState(false);
+  const [orderCatalogError, setOrderCatalogError] = useState<string | null>(null);
+  const [orderDraft, setOrderDraft] = useState<AdminOrderDraft>(freshOrderDraft);
+  const [orderPreview, setOrderPreview] = useState<CheckoutPreview | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<OrderDetail | null>(null);
+  const [orderFormError, setOrderFormError] = useState<string | null>(null);
+  const [isPreviewingOrder, setIsPreviewingOrder] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
   const refreshOrders = useCallback(async () => {
     dispatch(setAdminOrdersLoading(true));
     dispatch(setAdminOrdersError(null));
@@ -70,6 +101,27 @@ export default function AdminOrdersPage() {
     if (isHydrated) return;
     void refreshOrders();
   }, [isHydrated, refreshOrders]);
+
+  const loadOrderCatalog = useCallback(async () => {
+    setIsOrderCatalogLoading(true);
+    setOrderCatalogError(null);
+    try {
+      const [customers, products] = await Promise.all([
+        fetchAllAdminOrderCustomers(),
+        fetchAllProductsSnapshot(),
+      ]);
+      setOrderCustomers(customers);
+      setOrderProducts(products);
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load customers and products.";
+      setOrderCatalogError(message);
+    } finally {
+      setIsOrderCatalogLoading(false);
+    }
+  }, []);
 
   const visibleOrders = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -189,6 +241,150 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const openOrderDrawer = () => {
+    setOrderDrawerOpen(true);
+    setOrderDraft(freshOrderDraft());
+    setOrderPreview(null);
+    setPlacedOrder(null);
+    setOrderFormError(null);
+    void loadOrderCatalog();
+  };
+
+  const closeOrderDrawer = () => {
+    if (isPlacingOrder) return;
+    setOrderDrawerOpen(false);
+    setOrderFormError(null);
+  };
+
+  const handleCustomerChange = (customerId: string) => {
+    const customer = orderCustomers.find((item) => item.id === customerId);
+    setOrderPreview(null);
+    setOrderDraft((current) => ({
+      ...current,
+      customerId,
+      customerName: customer?.name ?? "",
+      customerPhone: customer?.phone ?? "",
+      customerEmail: customer?.email ?? "",
+      customerCity: customer?.city ?? "",
+    }));
+  };
+
+  const validateOrderDraft = (): string | null => {
+    if (orderDraft.customerName.trim().length < 2) {
+      return "Customer name must contain at least 2 characters.";
+    }
+    if (orderDraft.customerPhone.trim().length < 7) {
+      return "Customer phone must contain at least 7 characters.";
+    }
+    if (orderDraft.customerAddress.trim().length < 5) {
+      return "Enter a delivery address with at least 5 characters.";
+    }
+    if (orderDraft.items.length === 0) return "Add at least one product.";
+    return null;
+  };
+
+  const handlePreviewOrder = async () => {
+    const validationError = validateOrderDraft();
+    if (validationError) {
+      setOrderFormError(validationError);
+      return;
+    }
+    const advancePayment = Number(orderDraft.advancePayment || 0);
+    if (!Number.isFinite(advancePayment) || advancePayment < 0) {
+      setOrderFormError("Advance payment must be a non-negative number.");
+      return;
+    }
+
+    setOrderFormError(null);
+    setIsPreviewingOrder(true);
+    try {
+      const quote = await previewAdminOrder({
+        items: orderDraft.items,
+        promoCode: orderDraft.promoCode.trim() || null,
+      });
+      setOrderPreview(quote);
+    } catch (previewError) {
+      const message =
+        previewError instanceof Error
+          ? previewError.message
+          : "Failed to calculate the order total.";
+      setOrderFormError(message);
+    } finally {
+      setIsPreviewingOrder(false);
+    }
+  };
+
+  const handlePlaceOrder = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const validationError = validateOrderDraft();
+    if (validationError) {
+      setOrderFormError(validationError);
+      return;
+    }
+    const advancePayment = Number(orderDraft.advancePayment || 0);
+    if (!Number.isFinite(advancePayment) || advancePayment < 0) {
+      setOrderFormError("Advance payment must be a non-negative number.");
+      return;
+    }
+
+    setOrderFormError(null);
+    setIsPlacingOrder(true);
+    try {
+      const result = await placeAdminOrder({
+        customerId: orderDraft.customerId,
+        customerName: orderDraft.customerName.trim(),
+        customerPhone: orderDraft.customerPhone.trim(),
+        customerEmail: orderDraft.customerEmail.trim(),
+        customerAddress: orderDraft.customerAddress.trim(),
+        customerCity: orderDraft.customerCity.trim(),
+        customerPostalCode: orderDraft.customerPostalCode.trim(),
+        customerNote: orderDraft.customerNote.trim(),
+        paymentMethod: orderDraft.paymentMethod,
+        promoCode: orderDraft.promoCode.trim() || null,
+        items: orderDraft.items,
+        advancePayment,
+      });
+      setPlacedOrder(result.order);
+      setOrderPreview(null);
+      await refreshOrders();
+      const message = `Order ${result.order.orderNumber} placed successfully.`;
+      setSuccessNote(message);
+      notifyActionSuccess(message);
+    } catch (placementError) {
+      const message =
+        placementError instanceof Error
+          ? placementError.message
+          : "Failed to place the order.";
+      setOrderFormError(message);
+      notifyActionError(placementError, "Failed to place the order.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!placedOrder) return;
+    setIsDownloadingPdf(true);
+    try {
+      await downloadOrderPdf(placedOrder);
+    } catch (pdfError) {
+      const message =
+        pdfError instanceof Error ? pdfError.message : "Failed to generate PDF.";
+      setOrderFormError(message);
+      notifyActionError(pdfError, "Failed to generate PDF.");
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  const createAnotherOrder = () => {
+    setOrderDraft(freshOrderDraft());
+    setOrderPreview(null);
+    setPlacedOrder(null);
+    setOrderFormError(null);
+    void loadOrderCatalog();
+  };
+
   return (
     <section className="space-y-4">
       <OrderSummaryCards
@@ -211,6 +407,7 @@ export default function AdminOrdersPage() {
         onRefresh={() => {
           void refreshOrders();
         }}
+        onCreate={openOrderDrawer}
       />
 
       {error && (
@@ -244,6 +441,37 @@ export default function AdminOrdersPage() {
         onTogglePayment={(order) => {
           void handleTogglePayment(order);
         }}
+      />
+
+      <AdminOrderDrawer
+        open={orderDrawerOpen}
+        customers={orderCustomers}
+        products={orderProducts}
+        isCatalogLoading={isOrderCatalogLoading}
+        catalogError={orderCatalogError}
+        draft={orderDraft}
+        preview={orderPreview}
+        placedOrder={placedOrder}
+        error={orderFormError}
+        isPreviewing={isPreviewingOrder}
+        isSubmitting={isPlacingOrder}
+        isDownloadingPdf={isDownloadingPdf}
+        onClose={closeOrderDrawer}
+        onDraftChange={(next) => {
+          setOrderPreview(null);
+          setOrderDraft(next);
+        }}
+        onCustomerChange={handleCustomerChange}
+        onPreview={() => {
+          void handlePreviewOrder();
+        }}
+        onSubmit={(event) => {
+          void handlePlaceOrder(event);
+        }}
+        onDownloadPdf={() => {
+          void handleDownloadPdf();
+        }}
+        onCreateAnother={createAnotherOrder}
       />
     </section>
   );

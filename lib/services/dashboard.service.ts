@@ -170,12 +170,12 @@ async function loadStats(now: Date): Promise<DashboardStats> {
   ] = await Promise.all([
     prisma.order.aggregate({
       where: liveOrderWhere(),
-      _sum: { totalAmount: true },
+      _sum: { subtotal: true },
       _count: { _all: true },
     }),
     prisma.order.aggregate({
       where: liveOrderWhere({ lt: thisMonthStart }),
-      _sum: { totalAmount: true },
+      _sum: { subtotal: true },
       _count: { _all: true },
     }),
     prisma.order.count({
@@ -225,10 +225,12 @@ async function loadStats(now: Date): Promise<DashboardStats> {
     return { current, previous, delta, trend };
   };
 
-  // Revenue: rounded BDT amounts.
+  // Revenue is the product subtotal only. `totalAmount` also contains
+  // delivery, tax, and discounts, none of which belongs in the dashboard's
+  // product-revenue figure.
   const revenue = buildStat(
-    money(toNumber(revenueAll._sum.totalAmount)),
-    money(toNumber(revenueBefore._sum.totalAmount)),
+    money(toNumber(revenueAll._sum.subtotal)),
+    money(toNumber(revenueBefore._sum.subtotal)),
   );
 
   const orders = buildStat(ordersAll, ordersBefore);
@@ -243,8 +245,8 @@ async function loadStats(now: Date): Promise<DashboardStats> {
     );
 
   const profit = buildStat(
-    money(money(toNumber(revenueAll._sum.totalAmount)) - sumCost(costItemsAll)),
-    money(money(toNumber(revenueBefore._sum.totalAmount)) - sumCost(costItemsBefore)),
+    money(money(toNumber(revenueAll._sum.subtotal)) - sumCost(costItemsAll)),
+    money(money(toNumber(revenueBefore._sum.subtotal)) - sumCost(costItemsBefore)),
   );
 
   const customers = buildStat(customersTotal, customersBefore);
@@ -284,7 +286,7 @@ async function loadSalesSeries(now: Date) {
     },
     select: {
       createdAt: true,
-      totalAmount: true,
+      subtotal: true,
     },
   });
 
@@ -305,7 +307,7 @@ async function loadSalesSeries(now: Date) {
     const key = row.createdAt.toISOString().slice(0, 10);
     const bucket = buckets.get(key);
     if (!bucket) continue;
-    bucket.revenue = money(bucket.revenue + toNumber(row.totalAmount));
+    bucket.revenue = money(bucket.revenue + toNumber(row.subtotal));
     bucket.orders += 1;
   }
 

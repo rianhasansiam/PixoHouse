@@ -455,6 +455,22 @@ export default function OrderSummaryClient({ orderId }: OrderSummaryClientProps)
                 {order.taxAmount > 0 && (
                   <SummaryRow label="Tax" value={order.taxAmount} />
                 )}
+                {order.advancePayment > 0 && (
+                  <>
+                    <SummaryRow
+                      label="Advance payment"
+                      value={-order.advancePayment}
+                      tone="success"
+                    />
+                    <SummaryRow
+                      label="Balance due"
+                      value={Math.max(
+                        order.totalAmount - order.advancePayment,
+                        0,
+                      )}
+                    />
+                  </>
+                )}
               </div>
               <div className="mt-4 rounded-2xl border border-brand-border bg-brand-light-bg p-4">
                 <div className="flex items-baseline justify-between">

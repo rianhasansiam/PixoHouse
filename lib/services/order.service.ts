@@ -129,6 +129,7 @@ export function serializeOrder<T extends OrderWithItems>(order: T) {
     discountAmount: toNumber(order.discountAmount),
     taxAmount: toNumber(order.taxAmount),
     totalAmount: toNumber(order.totalAmount),
+    advancePayment: toNumber(order.advancePayment),
     items: order.items.map(serializeOrderItem),
   };
 }
@@ -368,6 +369,7 @@ export async function listOrdersForAdmin(query: AdminOrderQueryInput) {
         deliveryCharge: true,
         discountAmount: true,
         totalAmount: true,
+        advancePayment: true,
         status: true,
         paymentMethod: true,
         paymentStatus: true,
@@ -392,6 +394,7 @@ export async function listOrdersForAdmin(query: AdminOrderQueryInput) {
       deliveryCharge: toNumber(rest.deliveryCharge),
       discountAmount: toNumber(rest.discountAmount),
       totalAmount: toNumber(rest.totalAmount),
+      advancePayment: toNumber(rest.advancePayment),
       itemsCount: _count.items,
     };
   });

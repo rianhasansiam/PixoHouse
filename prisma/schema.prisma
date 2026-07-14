@@ -89,6 +89,7 @@ model Product {
 
   variants ProductVariant[]
   images   ProductImage[]
+  capitalCostSelections AdminProductCost[]
 
   cartItems  CartItem[]
   wishlists  Wishlist[]
@@ -215,14 +216,14 @@ model Wishlist {
  * --------------------------------------------------------------------------
  */
 
-// Checkout is authenticated-only: every order belongs to a real user.
-// onDelete: Restrict protects order history from accidental user deletes.
+// Customer checkout orders belong to a user account. Admins may also record
+// walk-in / guest orders, which retain the customer snapshot without a user.
 model Order {
   id          String @id @default(cuid())
   orderNumber String @unique // e.g. "ORD-260525-A1B2C3D4"
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   items OrderItem[]
 
@@ -231,6 +232,9 @@ model Order {
   discountAmount Decimal @default(0) @db.Decimal(10, 2)
   taxAmount      Decimal @default(0) @db.Decimal(10, 2)
   totalAmount    Decimal @db.Decimal(10, 2)
+  // Amount collected by an admin when the order is created. It is a payment
+  // against the total, never a product discount or revenue adjustment.
+  advancePayment Decimal @default(0) @db.Decimal(10, 2)
 
   customerName       String
   customerPhone      String
@@ -702,9 +706,23 @@ model AdminCapital {
   updatedAt DateTime @updatedAt
 }
 
+// Explicit product selections for the Capital & Cost page. A catalog
+// product counts toward product costs only after an admin selects it here.
+// Its current buying price and inventory stay on Product.
+model AdminProductCost {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId])
+  @@index([createdAt])
+}
+
 // Manual "other costs" the admin records by hand (rent, salaries, ads,
-// utilities, etc.). Separate from product costs, which are derived from
-// the existing Product/ProductVariant data and never stored here.
+// utilities, etc.). Separate from products selected for cost tracking.
 // ADMIN-ONLY.
 model AdminOtherCost {
   id          String   @id @default(cuid())
@@ -728,6 +746,8 @@ enum CapitalCostActivityType {
   CAPITAL_SET
   CAPITAL_UPDATED
   CAPITAL_ADDED
+  PRODUCT_COST_ADDED
+  PRODUCT_COST_REMOVED
   COST_CREATED
   COST_UPDATED
   COST_DELETED
